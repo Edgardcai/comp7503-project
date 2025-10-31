@@ -1,0 +1,26 @@
+{
+  "name": "comp7503-smart-city-project",
+  "version": "1.0.0",
+  "description": "COMP7503 Smart City Project using Node-RED and MongoDB",
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "node-red": "^3.1.0",
+    "node-red-dashboard": "^3.6.0",
+    "node-red-node-mongodb": "^0.2.3",
+    "node-red-contrib-aggregator": "^1.0.1",
+    "node-red-contrib-moment": "^4.0.0",
+    "node-red-contrib-statistics": "^1.0.1",
+    "node-red-node-smooth": "^0.1.2"
+  },
+  "scripts": {
+    "start": "node-red",
+    "dev": "node-red -v"
+  },
+  "keywords": [
+    "node-red",
+    "smart-city",
+    "mongodb",
+    "data-analytics"
+  ]
+}

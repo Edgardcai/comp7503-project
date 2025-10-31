@@ -1,0 +1,580 @@
+[
+    {
+        "id": "smart_city_tab",
+        "type": "tab",
+        "label": "Smart City Dashboard",
+        "disabled": false,
+        "info": "智慧城市数据采集与分析系统"
+    },
+    {
+        "id": "mongodb_config",
+        "type": "mongodb-client",
+        "name": "MongoDB Connection",
+        "protocol": "mongodb",
+        "hostname": "mongodb",
+        "port": "27017",
+        "dbname": "smartcity",
+        "authSource": "",
+        "authMechanism": "DEFAULT",
+        "tls": false,
+        "tlsCAFile": "",
+        "tlsInsecure": false,
+        "uri": "mongodb://mongodb:27017/smartcity"
+    },
+    {
+        "id": "ui_group_aqi",
+        "type": "ui_group",
+        "name": "空气质量监测",
+        "tab": "ui_tab_main",
+        "order": 1,
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "ui_group_traffic",
+        "type": "ui_group",
+        "name": "交通流量分析",
+        "tab": "ui_tab_main",
+        "order": 2,
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "ui_group_weather",
+        "type": "ui_group",
+        "name": "天气数据",
+        "tab": "ui_tab_main",
+        "order": 3,
+        "disp": true,
+        "width": "12",
+        "collapse": false
+    },
+    {
+        "id": "ui_tab_main",
+        "type": "ui_tab",
+        "name": "实时监控",
+        "icon": "dashboard",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "inject_aqi",
+        "type": "inject",
+        "z": "smart_city_tab",
+        "name": "每15分钟触发",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "900",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 100,
+        "wires": [
+            [
+                "http_request_aqi"
+            ]
+        ]
+    },
+    {
+        "id": "http_request_aqi",
+        "type": "http request",
+        "z": "smart_city_tab",
+        "name": "获取空气质量数据",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.data.gov.hk/v1/historical-archive/get-file?url=https%3A%2F%2Fdata.weather.gov.hk%2FweatherAPI%2Fhko_data%2Fregional-weather%2Flatest_1min_temperature.csv&time=20231201-1200",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "sendsession": false,
+        "x": 370,
+        "y": 100,
+        "wires": [
+            [
+                "function_parse_aqi",
+                "debug_aqi"
+            ]
+        ]
+    },
+    {
+        "id": "function_parse_aqi",
+        "type": "function",
+        "z": "smart_city_tab",
+        "name": "解析空气质量数据",
+        "func": "// 模拟数据解析（实际应根据API响应格式调整）\nvar timestamp = new Date();\n\n// 示例：创建模拟的空气质量数据\nvar stations = [\n    {name: \"中西区\", lat: 22.2855, lon: 114.1577},\n    {name: \"东区\", lat: 22.2841, lon: 114.2244},\n    {name: \"观塘\", lat: 22.3122, lon: 114.2259},\n    {name: \"深水埗\", lat: 22.3336, lon: 114.1628},\n    {name: \"葵青\", lat: 22.3644, lon: 114.1289}\n];\n\nvar records = stations.map(function(station) {\n    // 生成模拟的AQI数据（实际应从API响应中提取）\n    var aqi = Math.floor(Math.random() * 100) + 20;\n    var pm25 = Math.floor(Math.random() * 50) + 10;\n    \n    var healthRisk = \"低\";\n    if (aqi > 100) healthRisk = \"高\";\n    else if (aqi > 50) healthRisk = \"中\";\n    \n    return {\n        station: station.name,\n        aqi: aqi,\n        health_risk: healthRisk,\n        pollutants: {\n            pm25: pm25,\n            pm10: pm25 * 1.5,\n            no2: Math.floor(Math.random() * 80) + 20,\n            so2: Math.floor(Math.random() * 30) + 5,\n            o3: Math.floor(Math.random() * 60) + 10\n        },\n        location: {\n            type: \"Point\",\n            coordinates: [station.lon, station.lat]\n        },\n        timestamp: timestamp,\n        raw_data: msg.payload\n    };\n});\n\nmsg.payload = records;\nmsg.collection = \"air_quality\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 100,
+        "wires": [
+            [
+                "mongodb_insert_aqi",
+                "function_prepare_chart_aqi"
+            ]
+        ]
+    },
+    {
+        "id": "mongodb_insert_aqi",
+        "type": "mongodb out",
+        "z": "smart_city_tab",
+        "mongodb": "mongodb_config",
+        "name": "存储到MongoDB",
+        "collection": "",
+        "payonly": true,
+        "upsert": false,
+        "multi": false,
+        "operation": "insert",
+        "x": 950,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "debug_aqi",
+        "type": "debug",
+        "z": "smart_city_tab",
+        "name": "调试输出",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 650,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "function_prepare_chart_aqi",
+        "type": "function",
+        "z": "smart_city_tab",
+        "name": "准备图表数据",
+        "func": "// 为Dashboard准备数据\nvar chartData = [];\nvar gaugeData = 0;\n\nif (Array.isArray(msg.payload)) {\n    // 计算平均AQI\n    var totalAqi = 0;\n    msg.payload.forEach(function(record) {\n        totalAqi += record.aqi;\n        chartData.push({\n            x: record.station,\n            y: record.aqi\n        });\n    });\n    gaugeData = Math.round(totalAqi / msg.payload.length);\n}\n\n// 分别发送到不同的Dashboard节点\nreturn [\n    {payload: chartData, topic: \"AQI by Station\"},\n    {payload: gaugeData, topic: \"Average AQI\"}\n];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 950,
+        "y": 180,
+        "wires": [
+            [
+                "ui_chart_aqi"
+            ],
+            [
+                "ui_gauge_aqi"
+            ]
+        ]
+    },
+    {
+        "id": "ui_chart_aqi",
+        "type": "ui_chart",
+        "z": "smart_city_tab",
+        "name": "各区AQI柱状图",
+        "group": "ui_group_aqi",
+        "order": 2,
+        "width": "8",
+        "height": "6",
+        "label": "各区空气质量指数",
+        "chartType": "bar",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "暂无数据",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "150",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "x": 1230,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_gauge_aqi",
+        "type": "ui_gauge",
+        "z": "smart_city_tab",
+        "name": "平均AQI",
+        "group": "ui_group_aqi",
+        "order": 1,
+        "width": "4",
+        "height": "4",
+        "gtype": "gage",
+        "title": "全港平均AQI",
+        "label": "",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#e60000"
+        ],
+        "seg1": "50",
+        "seg2": "100",
+        "x": 1210,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "inject_weather",
+        "type": "inject",
+        "z": "smart_city_tab",
+        "name": "每30分钟触发",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "1800",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 300,
+        "wires": [
+            [
+                "http_request_weather"
+            ]
+        ]
+    },
+    {
+        "id": "http_request_weather",
+        "type": "http request",
+        "z": "smart_city_tab",
+        "name": "获取天气数据",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "sendsession": false,
+        "x": 360,
+        "y": 300,
+        "wires": [
+            [
+                "function_parse_weather",
+                "debug_weather"
+            ]
+        ]
+    },
+    {
+        "id": "function_parse_weather",
+        "type": "function",
+        "z": "smart_city_tab",
+        "name": "解析天气数据",
+        "func": "// 解析天文台API返回的天气数据\nvar data = msg.payload;\nvar timestamp = new Date();\n\nif (data && data.temperature && data.temperature.data) {\n    var records = data.temperature.data.map(function(item) {\n        return {\n            location: item.place,\n            temperature: item.value,\n            humidity: data.humidity ? data.humidity.data.find(h => h.place === item.place)?.value : null,\n            timestamp: timestamp,\n            raw_data: data\n        };\n    });\n    \n    msg.payload = records;\n    msg.collection = \"weather_data\";\n    return msg;\n}\n\n// 如果API格式不同，使用模拟数据\nvar locations = [\"香港天文台\", \"京士柏\", \"黃竹坑\", \"打鼓嶺\", \"流浮山\"];\nvar records = locations.map(function(location) {\n    return {\n        location: location,\n        temperature: Math.floor(Math.random() * 15) + 15,\n        humidity: Math.floor(Math.random() * 30) + 60,\n        timestamp: timestamp\n    };\n});\n\nmsg.payload = records;\nmsg.collection = \"weather_data\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 300,
+        "wires": [
+            [
+                "mongodb_insert_weather",
+                "function_prepare_chart_weather"
+            ]
+        ]
+    },
+    {
+        "id": "mongodb_insert_weather",
+        "type": "mongodb out",
+        "z": "smart_city_tab",
+        "mongodb": "mongodb_config",
+        "name": "存储到MongoDB",
+        "collection": "",
+        "payonly": true,
+        "upsert": false,
+        "multi": false,
+        "operation": "insert",
+        "x": 950,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "debug_weather",
+        "type": "debug",
+        "z": "smart_city_tab",
+        "name": "调试输出",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 630,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "function_prepare_chart_weather",
+        "type": "function",
+        "z": "smart_city_tab",
+        "name": "准备温度图表",
+        "func": "// 准备温度趋势数据\nvar temperatures = {};\n\nif (Array.isArray(msg.payload)) {\n    msg.payload.forEach(function(record) {\n        if (!temperatures[record.location]) {\n            temperatures[record.location] = [];\n        }\n        temperatures[record.location].push({\n            x: record.timestamp,\n            y: record.temperature\n        });\n    });\n}\n\n// 转换为Dashboard chart格式\nvar chartData = [];\nfor (var location in temperatures) {\n    chartData.push({\n        series: location,\n        data: temperatures[location]\n    });\n}\n\nmsg.payload = chartData;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 950,
+        "y": 380,
+        "wires": [
+            [
+                "ui_chart_temperature"
+            ]
+        ]
+    },
+    {
+        "id": "ui_chart_temperature",
+        "type": "ui_chart",
+        "z": "smart_city_tab",
+        "name": "温度趋势图",
+        "group": "ui_group_weather",
+        "order": 1,
+        "width": "12",
+        "height": "6",
+        "label": "各地区温度",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "HH:mm",
+        "interpolate": "linear",
+        "nodata": "暂无数据",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "40",
+        "removeOlder": "24",
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "x": 1210,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "inject_traffic",
+        "type": "inject",
+        "z": "smart_city_tab",
+        "name": "每10分钟触发",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "600",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 500,
+        "wires": [
+            [
+                "function_simulate_traffic"
+            ]
+        ]
+    },
+    {
+        "id": "function_simulate_traffic",
+        "type": "function",
+        "z": "smart_city_tab",
+        "name": "模拟交通数据",
+        "func": "// 由于交通快拍API需要特定格式，这里模拟交通数据\n// 实际项目中应替换为真实的API调用\n\nvar timestamp = new Date();\nvar hour = timestamp.getHours();\n\n// 根据时间模拟交通密度（上下班高峰期更拥堵）\nvar isPeakHour = (hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19);\n\nvar locations = [\n    {name: \"中环干诺道\", lat: 22.2819, lon: 114.1577},\n    {name: \"铜锣湾轩尼诗道\", lat: 22.2793, lon: 114.1847},\n    {name: \"旺角弥敦道\", lat: 22.3193, lon: 114.1694},\n    {name: \"尖沙咀广东道\", lat: 22.2976, lon: 114.1722},\n    {name: \"观塘道\", lat: 22.3122, lon: 114.2259}\n];\n\nvar densityLevels = [\"畅通\", \"缓慢\", \"拥堵\"];\n\nvar records = locations.map(function(location) {\n    var density;\n    if (isPeakHour) {\n        density = densityLevels[Math.floor(Math.random() * 2) + 1]; // 缓慢或拥堵\n    } else {\n        density = densityLevels[Math.floor(Math.random() * 2)]; // 畅通或缓慢\n    }\n    \n    var vehicleCount = 0;\n    if (density === \"畅通\") vehicleCount = Math.floor(Math.random() * 50) + 10;\n    else if (density === \"缓慢\") vehicleCount = Math.floor(Math.random() * 50) + 60;\n    else vehicleCount = Math.floor(Math.random() * 50) + 110;\n    \n    return {\n        location: location.name,\n        traffic_density: density,\n        vehicle_count: vehicleCount,\n        average_speed: density === \"拥堵\" ? Math.floor(Math.random() * 20) + 10 : \n                      density === \"缓慢\" ? Math.floor(Math.random() * 20) + 30 : \n                      Math.floor(Math.random() * 20) + 50,\n        timestamp: timestamp,\n        coordinates: {\n            type: \"Point\",\n            coordinates: [location.lon, location.lat]\n        }\n    };\n});\n\nmsg.payload = records;\nmsg.collection = \"traffic_flow\";\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 500,
+        "wires": [
+            [
+                "mongodb_insert_traffic",
+                "function_prepare_traffic_chart",
+                "debug_traffic"
+            ]
+        ]
+    },
+    {
+        "id": "mongodb_insert_traffic",
+        "type": "mongodb out",
+        "z": "smart_city_tab",
+        "mongodb": "mongodb_config",
+        "name": "存储到MongoDB",
+        "collection": "",
+        "payonly": true,
+        "upsert": false,
+        "multi": false,
+        "operation": "insert",
+        "x": 690,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "debug_traffic",
+        "type": "debug",
+        "z": "smart_city_tab",
+        "name": "调试输出",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 690,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "function_prepare_traffic_chart",
+        "type": "function",
+        "z": "smart_city_tab",
+        "name": "准备交通图表",
+        "func": "// 准备交通密度饼图数据\nvar densityCounts = {\n    \"畅通\": 0,\n    \"缓慢\": 0,\n    \"拥堵\": 0\n};\n\nif (Array.isArray(msg.payload)) {\n    msg.payload.forEach(function(record) {\n        if (densityCounts.hasOwnProperty(record.traffic_density)) {\n            densityCounts[record.traffic_density]++;\n        }\n    });\n}\n\nvar chartData = [];\nfor (var density in densityCounts) {\n    chartData.push({\n        label: density,\n        value: densityCounts[density]\n    });\n}\n\nmsg.payload = chartData;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 690,
+        "y": 620,
+        "wires": [
+            [
+                "ui_chart_traffic"
+            ]
+        ]
+    },
+    {
+        "id": "ui_chart_traffic",
+        "type": "ui_chart",
+        "z": "smart_city_tab",
+        "name": "交通状况分布",
+        "group": "ui_group_traffic",
+        "order": 1,
+        "width": "6",
+        "height": "6",
+        "label": "当前交通状况",
+        "chartType": "pie",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "暂无数据",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#e60000"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "x": 960,
+        "y": 620,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "comment_1",
+        "type": "comment",
+        "z": "smart_city_tab",
+        "name": "空气质量数据采集流程",
+        "info": "每15分钟从data.gov.hk获取空气质量数据\n解析后存储到MongoDB\n同时更新Dashboard显示",
+        "x": 160,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "comment_2",
+        "type": "comment",
+        "z": "smart_city_tab",
+        "name": "天气数据采集流程",
+        "info": "每30分钟从天文台API获取天气数据\n包括温度、湿度等信息",
+        "x": 140,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "comment_3",
+        "type": "comment",
+        "z": "smart_city_tab",
+        "name": "交通数据采集流程（模拟）",
+        "info": "每10分钟模拟交通数据\n实际项目中应调用真实的交通API",
+        "x": 160,
+        "y": 460,
+        "wires": []
+    }
+]

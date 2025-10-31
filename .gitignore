@@ -1,0 +1,46 @@
+# Node-RED数据文件
+node_modules/
+*.log
+npm-debug.log*
+
+# Docker数据卷
+.docker/
+
+# 数据库文件
+data/
+*.db
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# IDE配置
+.vscode/
+.idea/
+*.sublime-*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# 备份文件
+backup/
+*.bak
+*.backup
+
+# 环境变量文件（如果包含敏感信息）
+.env
+.env.local
+
+# 编译输出
+dist/
+build/
