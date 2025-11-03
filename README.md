@@ -1,536 +1,609 @@
-# COMP7503 智慧城市项目 - 快速入门指南
+# Smart City Data Analysis System
 
-基于香港开放数据的智慧城市数据采集、分析与可视化系统
+A comprehensive smart city data collection, analysis, and visualization platform based on Hong Kong Open Data.
+
+**Course**: COMP7503 Multimedia Technologies
+**Submission Deadline**: November 29, 2025, 23:55
+**Project Type**: Smart City Programming Assignment
 
 ---
 
-## 项目简介
+## Table of Contents
 
-本项目使用Node-RED和MongoDB构建了一个完整的智慧城市数据分析平台，主要功能包括：
+- [Project Overview](#project-overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Usage Guide](#usage-guide)
+- [Data Visualization](#data-visualization)
+- [Database Management](#database-management)
+- [Troubleshooting](#troubleshooting)
+- [Performance Optimization](#performance-optimization)
+- [Project Submission](#project-submission)
 
-- **实时数据采集**: 从 data.gov.hk 自动采集空气质量、天气、交通等数据
-- **数据存储**: 使用MongoDB存储时间序列数据
-- **数据分析**: 关联分析、趋势分析、异常检测
-- **可视化展示**: 交互式Dashboard实时展示数据和分析结果
+---
 
-## 快速开始
+## Project Overview
 
-### 前置要求
+This project implements a smart city data platform that:
 
-确保您的系统已安装：
+- **Collects** real-time data from Hong Kong Open Data Portal (data.gov.hk)
+- **Processes** and analyzes multiple data sources (air quality, weather, traffic)
+- **Stores** historical data in MongoDB for time-series analysis
+- **Visualizes** data through interactive dashboards
+- **Correlates** data across different domains to extract insights
 
-- **Docker**: 20.10 或更高版本
-- **Docker Compose**: 2.0 或更高版本
-- **浏览器**: Chrome/Firefox/Safari 最新版本
+### Use Cases Implemented
 
-检查安装：
+1. **Air Quality Monitoring**: Real-time AQI tracking across Hong Kong districts
+2. **Weather Data Analysis**: Temperature and humidity trends by location
+3. **Traffic Flow Analysis**: Traffic density, speed, and volume monitoring
+
+---
+
+## Features
+
+✅ **Real-time Data Collection**
+- Air quality data: Every 1.5 minutes
+- Weather data: Every 3 minutes
+- Traffic data: Every 1 minute
+
+✅ **Advanced Visualization**
+- Interactive dashboards with multiple chart types
+- Real-time updates
+- Responsive design
+
+✅ **Data Analysis**
+- Correlation analysis
+- Trend detection
+- Anomaly identification
+
+✅ **Containerized Deployment**
+- Docker-based architecture
+- Isolated environments
+- Easy scaling
+
+---
+
+## Tech Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Data Collection** | Node-RED | Visual flow-based programming |
+| **Database** | MongoDB | Time-series data storage |
+| **Visualization** | Node-RED Dashboard | Real-time charts and gauges |
+| **Containerization** | Docker | Environment isolation |
+| **Data Source** | data.gov.hk APIs | Open government data |
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+Ensure you have installed:
+
+- **Docker**: 20.10+ ([Download](https://www.docker.com/products/docker-desktop))
+- **8GB+ RAM** recommended
+- **10GB+ free disk space**
+
+Verify installation:
+
 ```bash
 docker --version
-docker-compose --version
+docker ps
 ```
 
-### 安装步骤
+### Installation Steps
 
-#### 1. 启动服务
-
-在项目目录下运行：
+#### Step 1: Create Docker Network
 
 ```bash
-# 创建自定义网络（用于容器间通信）
 docker network create my-app-network
+```
 
-# 启动 MongoDB 容器（包含认证配置）
+#### Step 2: Start MongoDB Container
+
+```bash
 docker run -d --name mymongo --network my-app-network \
--p 27017:27017 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/mongo:/data/db \
+-p 27017:27017 \
+-v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/mongo:/data/db \
 -e MONGO_INITDB_ROOT_USERNAME=admin \
 -e MONGO_INITDB_ROOT_PASSWORD=1234 \
 mongo:latest --auth
+```
 
-# 启动 Node-RED 容器
+**Note**: Update the volume path to match your local directory.
+
+#### Step 3: Start Node-RED Container
+
+```bash
 docker run -d --name nodered --network my-app-network \
--p 1880:1880 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/nodered:/data \
+-p 1880:1880 \
+-v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/nodered:/data \
 nodered/node-red:latest
-
-# 查看容器状态
-docker ps
-
-# 查看日志
-docker logs -f nodered
 ```
 
-预期输出：
+#### Step 4: Install MongoDB Nodes
+
+```bash
+# Install required Node-RED packages
+docker exec nodered npm install node-red-contrib-mongodb3
+docker restart nodered
 ```
-CONTAINER ID   IMAGE                     COMMAND                  CREATED       STATUS                 PORTS                                             NAMES
-85ff018d02a4   nodered/node-red:latest   "./entrypoint.sh"        2 hours ago   Up 2 hours (healthy)   0.0.0.0:1880->1880/tcp, [::]:1880->1880/tcp       nodered
-fb08d630544d   mongo:latest              "docker-entrypoint.s…"   2 hours ago   Up 2 hours             0.0.0.0:27017->27017/tcp, [::]:27017->27017/tcp   mymongo
-```
 
-#### 2. 访问Node-RED
+Wait 10 seconds for Node-RED to restart.
 
-打开浏览器访问：**http://localhost:1880**
+#### Step 5: Access Node-RED
 
-您将看到Node-RED的流程编辑器界面。
+Open your browser and navigate to: **http://localhost:1880**
 
-#### 3. 导入Flow
+#### Step 6: Import Flow
 
-1. 点击右上角菜单（三条横线）→ **Import**
-2. 选择 **select a file to import**
-3. 选择 `SmartCity.Flow.json` 文件
-4. 点击 **Import**
+1. Click the menu (≡) → **Import**
+2. Click **select a file to import**
+3. Choose `SmartCity.Flow.json`
+4. Click **Import**
 
-#### 4. 配置MongoDB连接
+#### Step 7: Deploy
 
-导入flow后，需要配置MongoDB连接：
+Click the **Deploy** button (top right, red color).
 
-1. 双击任意MongoDB节点
-2. 点击 **Server** 旁边的铅笔图标
-3. 填写配置：
-   - **Host**: `mymongo`
-   - **Port**: `27017`
-   - **Database**: `smartcity`
-   - **Username**: `admin`
-   - **Password**: `1234`
-   - **Name**: `MongoDB Connection`
-4. 点击 **Update** 和 **Done**
+#### Step 8: Access Dashboard
 
-**重要**: MongoDB 已启用认证，必须提供用户名和密码才能连接
+Open a new tab: **http://localhost:1880/ui**
 
-#### 5. 部署Flow
+You should see the Smart City Dashboard with:
+- Air Quality Monitoring
+- Weather Data
+- Traffic Analysis
 
-点击右上角的红色 **Deploy** 按钮。
+---
 
-部署成功后，数据采集将自动开始：
-- 空气质量数据：每15分钟
-- 天气数据：每30分钟
-- 交通数据：每10分钟
-
-#### 6. 访问Dashboard
-
-打开新标签页访问：**http://localhost:1880/ui**
-
-您将看到智慧城市Dashboard，包含：
-- 实时空气质量指数
-- 各区AQI柱状图
-- 温度趋势图
-- 交通状况分布
-
-## 服务端口
-
-| 服务 | 端口 | URL | 说明 |
-|------|------|-----|------|
-| Node-RED | 1880 | http://localhost:1880 | 流程编辑器 |
-| Dashboard | 1880 | http://localhost:1880/ui | 数据可视化界面 |
-| MongoDB | 27017 | mongodb://admin:1234@localhost:27017 | 数据库（需认证） |
-
-## 项目结构
+## Project Structure
 
 ```
 hw/
-├── docker-compose.yml          # Docker编排配置
-├── Dockerfile                  # 自定义Node-RED镜像（可选）
-├── package.json                # Node.js依赖声明
-├── SmartCity.Flow.json         # Node-RED流程定义
-├── 解决方案文档.md             # 详细的技术方案
-├── 项目报告模板.md             # 项目报告模板
-└── README.md                   # 本文件
+├── SmartCity.Flow.json          # Core Node-RED flow definition
+├── HKO.Flow.json                # Weather data flow (optional)
+├── README.md                    # This file
+├── Project_Report.md            # Detailed project report
+├── Dockerfile                   # Custom Node-RED image (optional)
+├── .gitignore                   # Git ignore rules
+├── mongo/                       # MongoDB data directory
+│   └── (auto-generated files)
+└── nodered/                     # Node-RED data directory
+    ├── flows.json               # Active flows
+    ├── flows_cred.json          # Credentials (encrypted)
+    └── package.json             # Installed packages
 ```
 
-## 主要功能
+### File Descriptions
 
-### 1. 数据采集
+| File | Size | Description |
+|------|------|-------------|
+| `SmartCity.Flow.json` | ~21 KB | Main flow with air quality, weather, and traffic data collection |
+| `README.md` | ~15 KB | Quick start guide and usage instructions |
+| `Project_Report.md` | ~40 KB | Comprehensive project documentation |
+| `mongo/` | Dynamic | MongoDB data files (auto-generated) |
+| `nodered/` | Dynamic | Node-RED configuration and flows |
 
-系统自动从以下数据源采集数据：
+---
 
-- **空气质量**: 环保署空气质量健康指数API
-- **天气数据**: 香港天文台天气API
-- **交通数据**: 运输署交通快拍API（当前为模拟数据）
+## Usage Guide
 
-### 2. 数据存储
+### Triggering Data Collection
 
-MongoDB中的主要集合：
+**Manual Trigger**:
+- In Node-RED editor, click the small button on the left side of any inject node
 
-- `air_quality`: 空气质量数据
-- `traffic_flow`: 交通流量数据
-- `weather_data`: 天气数据
-- `analysis_results`: 分析结果
+**Automatic Trigger**:
+- Air quality: Every 1.5 minutes
+- Weather: Every 3 minutes
+- Traffic: Every 1 minute
 
-### 3. 数据分析
+### Viewing Live Data
 
-- **相关性分析**: 空气质量与交通流量的关系
-- **趋势分析**: 移动平均、季节性分析
-- **异常检测**: 基于Z-score的异常值识别
+1. **Dashboard**: http://localhost:1880/ui
+   - Real-time charts update automatically
+   - No refresh needed
 
-### 4. 可视化
+2. **Debug Panel** (in Node-RED):
+   - Click the bug icon (🐛) on the right sidebar
+   - View raw data flowing through the system
 
-Dashboard提供多种图表：
-- **Gauge**: 实时指标展示
-- **Line Chart**: 时间序列趋势
-- **Bar Chart**: 对比分析
-- **Pie Chart**: 分类占比
-- **Table**: 详细数据列表
+### Customizing Data Collection
 
-## 数据库管理
+**Change Collection Frequency**:
 
-### 使用命令行
+1. Double-click an inject node
+2. Modify the **Repeat** field (in seconds)
+   - Current: 90s (1.5min), 180s (3min), 60s (1min)
+3. Click **Done**
+4. Click **Deploy**
 
-进入MongoDB容器：
+**Add New Data Sources**:
+
+1. Drag an `http request` node from the palette
+2. Configure the API endpoint
+3. Add a `function` node to parse data
+4. Connect to a `mongodb3 in` node for storage
+5. Add dashboard nodes for visualization
+
+---
+
+## Data Visualization
+
+### Air Quality Monitoring
+
+1. **City Average AQI** (Gauge)
+   - Range: 0-100
+   - Color-coded: Green (0-50), Yellow (50-75), Red (75-100)
+
+2. **AQI by District** (Bar Chart)
+   - Shows: Current AQI for each district
+   - Districts: Central & Western, Eastern, Kwun Tong, Sham Shui Po, Kwai Tsing
+
+### Weather Data
+
+1. **Temperature by Location** (Line Chart)
+   - Range: 10-35°C
+   - Multiple locations displayed simultaneously
+   - 24-hour data retention
+
+### Traffic Analysis
+
+1. **Traffic Density Status** (Pie Chart)
+   - Categories: Smooth, Slow, Congested
+   - Color-coded by severity
+
+2. **Average Traffic Speed** (Bar Chart)
+   - Range: 0-80 km/h
+   - By location
+
+3. **Vehicle Count by Location** (Bar Chart)
+   - Range: 0-200 vehicles
+   - Shows current traffic volume
+
+---
+
+## Database Management
+
+### Access MongoDB Shell
+
 ```bash
-docker exec -it mymongo mongosh -u admin -p 1234
+docker exec -it mymongo mongosh -u admin -p 1234 --authenticationDatabase admin
 ```
 
-常用命令：
+### Common Commands
+
 ```javascript
-// 切换到smartcity数据库
+// Switch to smartcity database
 use smartcity
 
-// 查看所有集合
+// View all collections
 show collections
 
-// 查询最新的10条空气质量数据
-db.air_quality.find().sort({timestamp: -1}).limit(10)
-
-// 查看集合中的文档数量
+// Count documents
 db.air_quality.countDocuments()
+db.weather_data.countDocuments()
+db.traffic_flow.countDocuments()
 
-// 查询特定站点的数据
-db.air_quality.find({station: "中西区"})
+// Query latest records
+db.air_quality.find().sort({timestamp: -1}).limit(5)
 
-// 删除所有数据（谨慎使用！）
-db.air_quality.deleteMany({})
+// Query by station
+db.air_quality.find({station: "Central & Western"})
+
+// Aggregate data
+db.air_quality.aggregate([
+  {$match: {timestamp: {$gte: new Date(Date.now() - 3600000)}}},
+  {$group: {_id: "$station", avgAQI: {$avg: "$aqi"}}}
+])
 ```
 
-## 常见问题
+### Data Backup
 
-### Q1: 启动后无法访问Node-RED
-
-**解决方案**:
 ```bash
-# 检查容器状态
-docker ps
+# Create backup
+docker exec mymongo mongodump -u admin -p 1234 \
+--authenticationDatabase admin --db=smartcity --out=/data/backup
 
-# 查看Node-RED日志
+# Copy to local
+docker cp mymongo:/data/backup ./backup
+
+# Compress
+zip -r mongodb_backup.zip backup/
+```
+
+### Data Restore
+
+```bash
+# Copy backup to container
+docker cp ./backup mymongo:/data/backup
+
+# Restore data
+docker exec mymongo mongorestore -u admin -p 1234 \
+--authenticationDatabase admin --db=smartcity /data/backup/smartcity
+```
+
+---
+
+## Troubleshooting
+
+### Issue 1: Cannot Access Node-RED
+
+**Symptoms**: Browser shows "Unable to connect"
+
+**Solutions**:
+```bash
+# Check container status
+docker ps | grep nodered
+
+# View logs
 docker logs nodered
 
-# 如果容器未运行，尝试重启
+# Restart container
 docker restart nodered
 ```
 
-### Q2: Dashboard不显示数据
+### Issue 2: Dashboard Shows No Data
 
-**原因**:
-- 数据库中还没有数据（刚启动需要等待第一次采集）
-- MongoDB连接配置错误
+**Causes**:
+- Database empty (just started)
+- MongoDB connection failed
+- Incorrect node configuration
 
-**解决方案**:
+**Solutions**:
 ```bash
-# 1. 检查是否有数据
-docker exec -it mymongo mongosh -u admin -p 1234 --eval "use smartcity; db.air_quality.countDocuments()"
+# Check if data exists
+docker exec -it mymongo mongosh -u admin -p 1234 --eval \
+"use smartcity; db.air_quality.countDocuments()"
 
-# 2. 如果没有数据，手动触发一次采集
-# 在Node-RED编辑器中，点击inject节点左侧的按钮
+# Manually trigger data collection
+# In Node-RED, click inject nodes
 
-# 3. 检查Debug节点输出
-# 在Node-RED编辑器中，打开右侧的Debug面板
+# Check debug panel for errors
 ```
 
-### Q3: MongoDB连接失败
+### Issue 3: MongoDB Authentication Error
 
-**错误信息**: `Error: connect ECONNREFUSED` 或 `Authentication failed`
+**Error**: `MongoError: Authentication failed`
 
-**解决方案**:
+**Solution**:
+1. Double-click any MongoDB node in Node-RED
+2. Click the pencil icon next to "Server"
+3. Verify credentials:
+   - Host: `mymongo`
+   - Username: `admin`
+   - Password: `1234`
+   - Auth Source: `admin`
+
+### Issue 4: Port Already in Use
+
+**Error**: `Bind for 0.0.0.0:1880 failed: port is already allocated`
+
+**Solution**:
+
+Option 1 - Stop conflicting service:
 ```bash
-# 1. 确保MongoDB容器正在运行
-docker ps | grep mymongo
-
-# 2. 重启MongoDB
-docker restart mymongo
-
-# 3. 等待30秒后重启Node-RED
-sleep 30
-docker restart nodered
-
-# 4. 检查MongoDB认证信息
-# 确保在Node-RED的MongoDB配置中使用：
-# Host: mymongo
-# Username: admin
-# Password: 1234
-```
-
-### Q4: 端口被占用
-
-**错误信息**: `Bind for 0.0.0.0:1880 failed: port is already allocated`
-
-**解决方案**:
-
-方法1 - 停止占用端口的服务：
-```bash
-# 查找占用端口的进程（macOS/Linux）
+# macOS/Linux
 lsof -i :1880
-
-# 杀死进程
 kill -9 <PID>
 ```
 
-方法2 - 修改端口映射：
+Option 2 - Use different port:
 ```bash
-# 停止并删除现有容器
-docker stop nodered
-docker rm nodered
-
-# 使用不同端口重新创建
+docker stop nodered && docker rm nodered
 docker run -d --name nodered --network my-app-network \
--p 1881:1880 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/nodered:/data \
+-p 1881:1880 \
+-v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/nodered:/data \
 nodered/node-red:latest
 ```
 
-然后访问 http://localhost:1881
+Then access: http://localhost:1881
 
-### Q5: 如何清空所有数据重新开始
+### Issue 5: Container Keeps Restarting
 
 ```bash
-# 停止所有容器
-docker stop nodered mymongo
+# Check logs for errors
+docker logs nodered --tail 50
 
-# 删除容器
-docker rm nodered mymongo
+# Check MongoDB connection
+docker exec nodered ping mymongo
 
-# 删除本地数据目录（会清空所有数据！）
-rm -rf mongo/* nodered/*
-
-# 重新创建容器
-# 创建网络（如果还不存在）
-docker network create my-app-network
-
-# 启动 MongoDB
-docker run -d --name mymongo --network my-app-network \
--p 27017:27017 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/mongo:/data/db \
--e MONGO_INITDB_ROOT_USERNAME=admin \
--e MONGO_INITDB_ROOT_PASSWORD=1234 \
-mongo:latest --auth
-
-# 启动 Node-RED
-docker run -d --name nodered --network my-app-network \
--p 1880:1880 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/nodered:/data \
-nodered/node-red:latest
+# Verify network
+docker network inspect my-app-network
 ```
 
-## 自定义和扩展
+---
 
-### 添加新的数据源
+## Performance Optimization
 
-1. 在Node-RED中添加新的flow
-2. 使用 `inject` 节点定时触发
-3. 使用 `http request` 节点调用API
-4. 使用 `function` 节点解析数据
-5. 使用 `mongodb out` 节点存储数据
+### 1. Reduce Collection Frequency
 
-### 修改采集频率
+If system is slow, increase intervals:
+- Air quality: 90s → 300s (5 min)
+- Weather: 180s → 600s (10 min)
+- Traffic: 60s → 300s (5 min)
 
-在inject节点中修改 **Repeat** 参数：
-- 单位：秒
-- 例如：900秒 = 15分钟
+### 2. Limit Chart Data Points
 
-### 添加新的Dashboard图表
+In chart nodes, set `removeOlder`:
+```javascript
+{
+    "removeOlder": 24,      // Keep only 24 hours
+    "removeOlderUnit": "3600"  // In seconds
+}
+```
 
-1. 从左侧面板拖入Dashboard节点（如 `ui_chart`）
-2. 配置图表类型和样式
-3. 连接到数据源节点
-4. 部署并刷新Dashboard页面
-
-### 创建自定义分析
-
-在 `function` 节点中编写JavaScript代码：
+### 3. Create Database Indexes
 
 ```javascript
-// 示例：计算过去1小时的平均AQI
-var data = msg.payload; // 从MongoDB查询的数据
-
-if (Array.isArray(data) && data.length > 0) {
-    var sum = 0;
-    data.forEach(function(record) {
-        sum += record.aqi;
-    });
-
-    var average = sum / data.length;
-
-    msg.payload = {
-        average: average,
-        count: data.length,
-        timestamp: new Date()
-    };
-} else {
-    msg.payload = {
-        average: 0,
-        count: 0,
-        error: "No data available"
-    };
-}
-
-return msg;
+// In MongoDB
+db.air_quality.createIndex({timestamp: -1})
+db.air_quality.createIndex({station: 1, timestamp: -1})
+db.traffic_flow.createIndex({timestamp: -1})
 ```
 
-## 停止和清理
+### 4. Clean Old Data
 
-### 停止服务（保留数据）
+```javascript
+// Delete data older than 30 days
+db.air_quality.deleteMany({
+    timestamp: {$lt: new Date(Date.now() - 30*24*3600000)}
+})
+```
+
+---
+
+## Stopping and Cleanup
+
+### Stop Containers (Keep Data)
 
 ```bash
 docker stop nodered mymongo
 ```
 
-### 重新启动
+### Restart Containers
 
 ```bash
 docker start mymongo nodered
 ```
 
-### 完全停止并删除容器（保留数据）
+### Remove Containers (Keep Data)
 
 ```bash
 docker stop nodered mymongo
 docker rm nodered mymongo
 ```
 
-数据仍保留在 `mongo/` 和 `nodered/` 目录中，重新创建容器时会自动加载。
+Data is preserved in `mongo/` and `nodered/` directories.
 
-### 完全清理（删除容器和数据）
+### Complete Cleanup (Delete Everything)
 
 ```bash
-# 警告：这将删除所有数据！
+# WARNING: This deletes all data!
 docker stop nodered mymongo
 docker rm nodered mymongo
 rm -rf mongo/* nodered/*
-
-# 可选：删除网络
 docker network rm my-app-network
 ```
 
-## 性能优化建议
+---
 
-### 1. 调整采集频率
+## Project Submission
 
-如果系统资源有限，可以降低采集频率：
-- 空气质量：15分钟 → 30分钟
-- 天气数据：30分钟 → 1小时
-- 交通数据：10分钟 → 15分钟
+### Required Files
 
-### 2. 启用数据聚合
+1. ✅ `SmartCity.Flow.json` - Core flow definition
+2. ✅ `README.md` - This documentation
+3. ✅ `Project_Report.pdf` - Converted from Project_Report.md
+4. ✅ `Dockerfile` OR Docker Hub link
 
-使用MongoDB的聚合功能预计算统计数据，减少Dashboard查询负担。
+### Submission Package
 
-### 3. 限制历史数据量
-
-在Chart节点中设置 `removeOlder` 参数，只保留必要的历史数据：
-```javascript
-{
-    "removeOlder": 24,
-    "removeOlderUnit": "3600"
-}
-```
-
-### 4. 添加索引
-
-在MongoDB中为常用查询字段添加索引：
-```javascript
-db.air_quality.createIndex({timestamp: -1});
-db.air_quality.createIndex({station: 1, timestamp: -1});
-```
-
-## 调试技巧
-
-### 1. 使用Debug节点
-
-在关键位置添加Debug节点，查看数据流：
-- 拖入 `debug` 节点
-- 连接到要调试的节点
-- 打开右侧Debug面板查看输出
-
-### 2. 查看日志
+Create a ZIP file:
 
 ```bash
-# Node-RED日志
-docker logs -f nodered
+# Include only source files, not data
+zip -r StudentID_Name_COMP7503.zip \
+  SmartCity.Flow.json \
+  README.md \
+  Project_Report.pdf \
+  Dockerfile
 
-# MongoDB日志
-docker logs -f mymongo
-
-# 查看最近的日志
-docker logs --tail 100 nodered
+# Example: 3035123456_JohnDoe_COMP7503.zip
 ```
 
-### 3. 手动触发采集
+**Do NOT include**:
+- `mongo/` directory
+- `nodered/` directory
+- `node_modules/`
+- `.DS_Store`, `.git/`
 
-点击inject节点左侧的小方块，立即触发一次数据采集，无需等待定时器。
+### Converting Report to PDF
 
-## 数据备份与恢复
-
-### 备份MongoDB数据
-
+**Method 1: Using Pandoc**
 ```bash
-# 创建备份目录
-mkdir -p backup
-
-# 备份所有数据（使用认证）
-docker exec mymongo mongodump -u admin -p 1234 --authenticationDatabase admin \
---db=smartcity --out=/data/backup
-
-# 复制到本地
-docker cp mymongo:/data/backup ./backup
+pandoc Project_Report.md -o Project_Report.pdf \
+--pdf-engine=xelatex --toc
 ```
 
-### 恢复数据
+**Method 2: Using Typora**
+1. Open `Project_Report.md` in Typora
+2. File → Export → PDF
 
-```bash
-# 复制备份到容器
-docker cp ./backup mymongo:/data/backup
+**Method 3: Online**
+- Visit: https://www.markdowntopdf.com/
 
-# 恢复数据（使用认证）
-docker exec mymongo mongorestore -u admin -p 1234 --authenticationDatabase admin \
---db=smartcity /data/backup/smartcity
-```
+### Submission Checklist
 
-## 项目提交
-
-提交时需要包含以下文件：
-
-1. **SmartCity.Flow.json** - Node-RED流程文件
-2. **docker-compose.yml** - Docker配置
-3. **项目报告.pdf** - 详细报告
-4. **README.md** - 本文件
-
-可选文件：
-- Dockerfile
-- package.json
-- 其他说明文档
-
-## 相关链接
-
-- **Node-RED官方文档**: https://nodered.org/docs/
-- **MongoDB文档**: https://www.mongodb.com/docs/
-- **Docker文档**: https://docs.docker.com/
-- **香港开放数据平台**: https://data.gov.hk/
-- **COMP7503课程主页**: [填写课程网址]
-
-## 技术支持
-
-如遇到问题：
-
-1. 查看本README的常见问题部分
-2. 查看 `解决方案文档.md` 中的详细说明
-3. 检查Docker和MongoDB日志
-4. 联系小组成员或助教
-
-## 许可证
-
-本项目仅用于COMP7503课程学习目的，未经授权不得用于其他用途。
-
-## 致谢
-
-- 香港政府数据开放平台提供的数据API
-- Node-RED社区的丰富节点库
-- MongoDB优秀的时间序列数据存储能力
+- [ ] All containers start successfully
+- [ ] Flow imports without errors
+- [ ] Dashboard displays data correctly
+- [ ] MongoDB connections work
+- [ ] README.md is complete
+- [ ] Project report converted to PDF
+- [ ] File size < 10MB (excluding data)
+- [ ] Proper naming convention used
 
 ---
 
-**祝您使用愉快！**
+## Additional Resources
 
-如果您觉得这个项目有帮助，欢迎给个星标⭐
+### Official Documentation
+
+- [Node-RED](https://nodered.org/docs/)
+- [MongoDB](https://www.mongodb.com/docs/)
+- [Docker](https://docs.docker.com/)
+- [data.gov.hk](https://data.gov.hk/)
+
+### Node-RED Packages Used
+
+- `node-red-dashboard` - Dashboard UI components
+- `node-red-contrib-mongodb3` - MongoDB integration
+
+### Data Sources
+
+- **Air Quality**: HK EPD Air Quality Health Index
+- **Weather**: HK Observatory Weather API
+- **Traffic**: Simulated (for demonstration)
+
+---
+
+## Support
+
+### Getting Help
+
+1. Check this README's troubleshooting section
+2. Review Node-RED debug panel
+3. Check Docker container logs
+4. Verify network connectivity
+
+### Contact Information
+
+**Course**: COMP7503 Multimedia Technologies
+**Institution**: The University of Hong Kong
+
+---
+
+## License
+
+This project is for educational purposes as part of COMP7503 coursework.
+
+---
+
+## Acknowledgments
+
+- Hong Kong Government Data Portal for open data APIs
+- Node-RED community for excellent tools
+- MongoDB for robust time-series data storage
+
+---
+
+**Last Updated**: November 2025
+**Version**: 2.0 (English Edition)
+
+**Good luck with your project! 🎉**
