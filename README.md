@@ -36,22 +36,33 @@ docker-compose --version
 在项目目录下运行：
 
 ```bash
-# 启动所有服务（Node-RED + MongoDB + Mongo Express）
-docker-compose up -d
+# 创建自定义网络（用于容器间通信）
+docker network create my-app-network
 
-# 查看服务状态
-docker-compose ps
+# 启动 MongoDB 容器（包含认证配置）
+docker run -d --name mymongo --network my-app-network \
+-p 27017:27017 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/mongo:/data/db \
+-e MONGO_INITDB_ROOT_USERNAME=admin \
+-e MONGO_INITDB_ROOT_PASSWORD=1234 \
+mongo:latest --auth
+
+# 启动 Node-RED 容器
+docker run -d --name nodered --network my-app-network \
+-p 1880:1880 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/nodered:/data \
+nodered/node-red:latest
+
+# 查看容器状态
+docker ps
 
 # 查看日志
-docker-compose logs -f
+docker logs -f nodered
 ```
 
 预期输出：
 ```
-NAME                    STATUS              PORTS
-comp7503-nodered        running             0.0.0.0:1880->1880/tcp
-comp7503-mongodb        running             0.0.0.0:27017->27017/tcp
-comp7503-mongo-express  running             0.0.0.0:8081->8081/tcp
+CONTAINER ID   IMAGE                     COMMAND                  CREATED       STATUS                 PORTS                                             NAMES
+85ff018d02a4   nodered/node-red:latest   "./entrypoint.sh"        2 hours ago   Up 2 hours (healthy)   0.0.0.0:1880->1880/tcp, [::]:1880->1880/tcp       nodered
+fb08d630544d   mongo:latest              "docker-entrypoint.s…"   2 hours ago   Up 2 hours             0.0.0.0:27017->27017/tcp, [::]:27017->27017/tcp   mymongo
 ```
 
 #### 2. 访问Node-RED
@@ -74,11 +85,15 @@ comp7503-mongo-express  running             0.0.0.0:8081->8081/tcp
 1. 双击任意MongoDB节点
 2. 点击 **Server** 旁边的铅笔图标
 3. 填写配置：
-   - **Host**: `mongodb`
+   - **Host**: `mymongo`
    - **Port**: `27017`
    - **Database**: `smartcity`
+   - **Username**: `admin`
+   - **Password**: `1234`
    - **Name**: `MongoDB Connection`
 4. 点击 **Update** 和 **Done**
+
+**重要**: MongoDB 已启用认证，必须提供用户名和密码才能连接
 
 #### 5. 部署Flow
 
@@ -105,8 +120,7 @@ comp7503-mongo-express  running             0.0.0.0:8081->8081/tcp
 |------|------|-----|------|
 | Node-RED | 1880 | http://localhost:1880 | 流程编辑器 |
 | Dashboard | 1880 | http://localhost:1880/ui | 数据可视化界面 |
-| MongoDB | 27017 | mongodb://localhost:27017 | 数据库 |
-| Mongo Express | 8081 | http://localhost:8081 | 数据库管理界面 |
+| MongoDB | 27017 | mongodb://admin:1234@localhost:27017 | 数据库（需认证） |
 
 ## 项目结构
 
@@ -157,24 +171,11 @@ Dashboard提供多种图表：
 
 ## 数据库管理
 
-### 使用Mongo Express
-
-访问 http://localhost:8081
-
-- 用户名: `admin`
-- 密码: `admin123`
-
-在这里可以：
-- 浏览所有集合
-- 执行查询
-- 查看数据统计
-- 手动修改数据
-
 ### 使用命令行
 
 进入MongoDB容器：
 ```bash
-docker exec -it comp7503-mongodb mongosh
+docker exec -it mymongo mongosh -u admin -p 1234
 ```
 
 常用命令：
@@ -205,13 +206,13 @@ db.air_quality.deleteMany({})
 **解决方案**:
 ```bash
 # 检查容器状态
-docker-compose ps
+docker ps
 
 # 查看Node-RED日志
-docker-compose logs node-red
+docker logs nodered
 
 # 如果容器未运行，尝试重启
-docker-compose restart node-red
+docker restart nodered
 ```
 
 ### Q2: Dashboard不显示数据
@@ -223,7 +224,7 @@ docker-compose restart node-red
 **解决方案**:
 ```bash
 # 1. 检查是否有数据
-docker exec -it comp7503-mongodb mongosh smartcity --eval "db.air_quality.countDocuments()"
+docker exec -it mymongo mongosh -u admin -p 1234 --eval "use smartcity; db.air_quality.countDocuments()"
 
 # 2. 如果没有数据，手动触发一次采集
 # 在Node-RED编辑器中，点击inject节点左侧的按钮
@@ -234,18 +235,25 @@ docker exec -it comp7503-mongodb mongosh smartcity --eval "db.air_quality.countD
 
 ### Q3: MongoDB连接失败
 
-**错误信息**: `Error: connect ECONNREFUSED`
+**错误信息**: `Error: connect ECONNREFUSED` 或 `Authentication failed`
 
 **解决方案**:
 ```bash
 # 1. 确保MongoDB容器正在运行
-docker-compose ps mongodb
+docker ps | grep mymongo
 
 # 2. 重启MongoDB
-docker-compose restart mongodb
+docker restart mymongo
 
 # 3. 等待30秒后重启Node-RED
-docker-compose restart node-red
+sleep 30
+docker restart nodered
+
+# 4. 检查MongoDB认证信息
+# 确保在Node-RED的MongoDB配置中使用：
+# Host: mymongo
+# Username: admin
+# Password: 1234
 ```
 
 ### Q4: 端口被占用
@@ -263,25 +271,47 @@ lsof -i :1880
 kill -9 <PID>
 ```
 
-方法2 - 修改docker-compose.yml中的端口映射：
-```yaml
-services:
-  node-red:
-    ports:
-      - "1881:1880"  # 改为1881端口
+方法2 - 修改端口映射：
+```bash
+# 停止并删除现有容器
+docker stop nodered
+docker rm nodered
+
+# 使用不同端口重新创建
+docker run -d --name nodered --network my-app-network \
+-p 1881:1880 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/nodered:/data \
+nodered/node-red:latest
 ```
+
+然后访问 http://localhost:1881
 
 ### Q5: 如何清空所有数据重新开始
 
 ```bash
-# 停止所有服务
-docker-compose down
+# 停止所有容器
+docker stop nodered mymongo
 
-# 删除数据卷（会清空所有数据！）
-docker volume rm hw_mongodb-data hw_node-red-data
+# 删除容器
+docker rm nodered mymongo
 
-# 重新启动
-docker-compose up -d
+# 删除本地数据目录（会清空所有数据！）
+rm -rf mongo/* nodered/*
+
+# 重新创建容器
+# 创建网络（如果还不存在）
+docker network create my-app-network
+
+# 启动 MongoDB
+docker run -d --name mymongo --network my-app-network \
+-p 27017:27017 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/mongo:/data/db \
+-e MONGO_INITDB_ROOT_USERNAME=admin \
+-e MONGO_INITDB_ROOT_PASSWORD=1234 \
+mongo:latest --auth
+
+# 启动 Node-RED
+docker run -d --name nodered --network my-app-network \
+-p 1880:1880 -v /Users/zijiancai/Desktop/hkucsfiles/comp7503/hw/nodered:/data \
+nodered/node-red:latest
 ```
 
 ## 自定义和扩展
@@ -344,26 +374,34 @@ return msg;
 ### 停止服务（保留数据）
 
 ```bash
-docker-compose stop
+docker stop nodered mymongo
 ```
 
 ### 重新启动
 
 ```bash
-docker-compose start
+docker start mymongo nodered
 ```
 
 ### 完全停止并删除容器（保留数据）
 
 ```bash
-docker-compose down
+docker stop nodered mymongo
+docker rm nodered mymongo
 ```
+
+数据仍保留在 `mongo/` 和 `nodered/` 目录中，重新创建容器时会自动加载。
 
 ### 完全清理（删除容器和数据）
 
 ```bash
 # 警告：这将删除所有数据！
-docker-compose down -v
+docker stop nodered mymongo
+docker rm nodered mymongo
+rm -rf mongo/* nodered/*
+
+# 可选：删除网络
+docker network rm my-app-network
 ```
 
 ## 性能优化建议
@@ -410,13 +448,13 @@ db.air_quality.createIndex({station: 1, timestamp: -1});
 
 ```bash
 # Node-RED日志
-docker-compose logs -f node-red
+docker logs -f nodered
 
 # MongoDB日志
-docker-compose logs -f mongodb
+docker logs -f mymongo
 
-# 所有服务日志
-docker-compose logs -f
+# 查看最近的日志
+docker logs --tail 100 nodered
 ```
 
 ### 3. 手动触发采集
@@ -431,21 +469,23 @@ docker-compose logs -f
 # 创建备份目录
 mkdir -p backup
 
-# 备份所有数据
-docker exec comp7503-mongodb mongodump --db=smartcity --out=/data/backup
+# 备份所有数据（使用认证）
+docker exec mymongo mongodump -u admin -p 1234 --authenticationDatabase admin \
+--db=smartcity --out=/data/backup
 
 # 复制到本地
-docker cp comp7503-mongodb:/data/backup ./backup
+docker cp mymongo:/data/backup ./backup
 ```
 
 ### 恢复数据
 
 ```bash
 # 复制备份到容器
-docker cp ./backup comp7503-mongodb:/data/backup
+docker cp ./backup mymongo:/data/backup
 
-# 恢复数据
-docker exec comp7503-mongodb mongorestore --db=smartcity /data/backup/smartcity
+# 恢复数据（使用认证）
+docker exec mymongo mongorestore -u admin -p 1234 --authenticationDatabase admin \
+--db=smartcity /data/backup/smartcity
 ```
 
 ## 项目提交

@@ -2,7 +2,10 @@
 node_modules/
 *.log
 npm-debug.log*
-
+#/nodered/ and /mongo/ 文件不上传
+/.claude/
+/nodered/
+/mongo/
 # Docker数据卷
 .docker/
 
