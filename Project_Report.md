@@ -2,7 +2,6 @@
 
 **Course**: Multimedia Technologies
 **Project**: Smart City Data Analysis System
-**Submission Date**: November 29, 2025
 
 ---
 
