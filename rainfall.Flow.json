@@ -1,0 +1,470 @@
+[
+    {
+        "id": "tab_flood",
+        "type": "tab",
+        "label": "Southern District Flood Warning",
+        "disabled": false,
+        "info": "Smart Flood Warning & Emergency Response System"
+    },
+    {
+        "id": "ui_tab_flood",
+        "type": "ui_tab",
+        "name": "Southern District Flood System",
+        "icon": "fa-tint",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "grp_monitor",
+        "type": "ui_group",
+        "name": "Real-time Hydro-Meteorological Monitor",
+        "tab": "ui_tab_flood",
+        "order": 1,
+        "disp": true,
+        "width": "12",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "grp_risk",
+        "type": "ui_group",
+        "name": "Dynamic Flood Risk Model (Wong Chuk Hang)",
+        "tab": "ui_tab_flood",
+        "order": 2,
+        "disp": true,
+        "width": "12",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "grp_response",
+        "type": "ui_group",
+        "name": "Intelligent Emergency Response",
+        "tab": "ui_tab_flood",
+        "order": 3,
+        "disp": true,
+        "width": "12",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "grp_kpi",
+        "type": "ui_group",
+        "name": "Situational Awareness Dashboard",
+        "tab": "ui_tab_flood",
+        "order": 4,
+        "disp": true,
+        "width": "12",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "mongo_conf",
+        "type": "mongodb3",
+        "name": "MongoDB Connection",
+        "uri": "mongodb://admin:1234@mymongo:27017/smartcity?authSource=admin",
+        "options": "",
+        "parallelism": "-1",
+        "parallelismLimit": ""
+    },
+    {
+        "id": "inj_weather",
+        "type": "inject",
+        "z": "tab_flood",
+        "name": "Trigger 5min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "req_weather"
+            ]
+        ]
+    },
+    {
+        "id": "req_weather",
+        "type": "http request",
+        "z": "tab_flood",
+        "name": "Fetch HKO Weather",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "sendsession": false,
+        "x": 330,
+        "y": 80,
+        "wires": [
+            [
+                "func_parse_weather"
+            ]
+        ]
+    },
+    {
+        "id": "func_parse_weather",
+        "type": "function",
+        "z": "tab_flood",
+        "name": "Parse Rain & Tide",
+        "func": "var data = msg.payload;\nvar timestamp = new Date();\n\n// 1. Extract Real Rainfall (HKO Data)\nvar rainfall = 0;\nif (data.rainfall && data.rainfall.data && data.rainfall.data.length > 0) {\n    // Usually look for 'Southern District' in real app, taking max for now\n    rainfall = Math.max(...data.rainfall.data.map(r => r.max || 0));\n}\n\n// 2. Simulate Tide Level (Astronomical Tide)\n// Simulating High Tide around 9am and 9pm\nvar hour = timestamp.getHours();\nvar tideBase = 1.5; // meters\nvar tideVar = Math.sin((hour - 9) * Math.PI / 6); \nvar tideLevel = tideBase + (tideVar * 0.8);\n// Add randomness for storm surge effect if raining heavy\nif (rainfall > 30) tideLevel += 0.5;\n\nvar weatherData = {\n    rainfall_mm: rainfall,\n    tide_level_m: parseFloat(tideLevel.toFixed(2)),\n    warning_signal: rainfall > 70 ? \"Black\" : rainfall > 50 ? \"Red\" : rainfall > 30 ? \"Amber\" : \"None\",\n    timestamp: timestamp\n};\n\nflow.set('flood_weather', weatherData);\nmsg.payload = weatherData;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 80,
+        "wires": [
+            [
+                "db_weather",
+                "ui_gauge_rain",
+                "ui_gauge_tide"
+            ]
+        ]
+    },
+    {
+        "id": "db_weather",
+        "type": "mongodb3 in",
+        "z": "tab_flood",
+        "service": "mongo_conf",
+        "configNode": "mongo_conf",
+        "name": "DB: Weather",
+        "collection": "flood_weather_log",
+        "operation": "insert",
+        "x": 810,
+        "y": 60,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_gauge_rain",
+        "type": "ui_gauge",
+        "z": "tab_flood",
+        "name": "Rainfall Intensity",
+        "group": "grp_monitor",
+        "order": 1,
+        "width": 6,
+        "height": 4,
+        "gtype": "gage",
+        "title": "Real-time Rainfall (mm/hr)",
+        "label": "mm",
+        "format": "{{msg.payload.rainfall_mm}}",
+        "min": 0,
+        "max": "150",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "30",
+        "seg2": "70",
+        "x": 830,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "ui_gauge_tide",
+        "type": "ui_gauge",
+        "z": "tab_flood",
+        "name": "Tide Level",
+        "group": "grp_monitor",
+        "order": 2,
+        "width": 6,
+        "height": 4,
+        "gtype": "wave",
+        "title": "Aberdeen Tide Level (m)",
+        "label": "m",
+        "format": "{{msg.payload.tide_level_m}}",
+        "min": 0,
+        "max": "4",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "x": 810,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "inj_risk",
+        "type": "inject",
+        "z": "tab_flood",
+        "name": "Trigger 3min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "180",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 240,
+        "wires": [
+            [
+                "func_risk_model"
+            ]
+        ]
+    },
+    {
+        "id": "func_risk_model",
+        "type": "function",
+        "z": "tab_flood",
+        "name": "Risk & Traffic Model",
+        "func": "var weather = flow.get('flood_weather') || {rainfall_mm: 0, tide_level_m: 1.5};\nvar timestamp = new Date();\n\n// --- 1. Drainage Capacity Logic (Compound Disaster) ---\n// High tide reduces drainage efficiency (water can't flow out to sea)\nvar drainageEfficiency = 100;\nif (weather.tide_level_m > 2.5) drainageEfficiency -= 20;\nif (weather.tide_level_m > 3.0) drainageEfficiency -= 40;\n\n// Rainfall Load\nvar rainLoad = weather.rainfall_mm * 1.5; // Factor\n\nvar systemLoadPct = Math.min(100, (rainLoad / drainageEfficiency) * 100);\nif (weather.rainfall_mm === 0) systemLoadPct = 0;\n\n// --- 2. Traffic Impact Simulation ---\n// Wong Chuk Hang Road is sensitive to flooding\nvar baseSpeed = 50;\nif (systemLoadPct > 80) baseSpeed = 5;  // Flooded\nelse if (systemLoadPct > 50) baseSpeed = 20; // Waterlogging\nelse if (weather.rainfall_mm > 10) baseSpeed = 35; // Wet road\n\nvar trafficStatus = baseSpeed < 10 ? \"Paralyzed\" : baseSpeed < 25 ? \"Congested\" : \"Normal\";\n\n// --- 3. Risk Level Calculation ---\nvar riskLevel = \"Low\";\nvar riskScore = systemLoadPct;\nif (riskScore > 85) riskLevel = \"Extreme\";\nelse if (riskScore > 60) riskLevel = \"High\";\nelse if (riskScore > 30) riskLevel = \"Moderate\";\n\nvar data = {\n    drainage_load: Math.round(systemLoadPct),\n    traffic_speed: baseSpeed,\n    traffic_status: trafficStatus,\n    risk_level: riskLevel,\n    risk_score: Math.round(riskScore),\n    timestamp: timestamp\n};\n\nflow.set('flood_risk', data);\n\n// Output 1: Full Data\n// Output 2: For Chart (Load vs Rain)\nreturn [{payload: data}, {payload: {load: Math.round(systemLoadPct), rain: weather.rainfall_mm}}];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 240,
+        "wires": [
+            [
+                "db_risk",
+                "func_emergency_logic",
+                "ui_template_risk_map"
+            ],
+            [
+                "ui_chart_risk"
+            ]
+        ]
+    },
+    {
+        "id": "db_risk",
+        "type": "mongodb3 in",
+        "z": "tab_flood",
+        "service": "mongo_conf",
+        "configNode": "mongo_conf",
+        "name": "DB: Risk",
+        "collection": "flood_risk_log",
+        "operation": "insert",
+        "x": 600,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_chart_risk",
+        "type": "ui_chart",
+        "z": "tab_flood",
+        "name": "Drainage Load vs Rain",
+        "group": "grp_risk",
+        "order": 1,
+        "width": 6,
+        "height": 5,
+        "label": "Drainage Load (%) vs Rainfall",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "HH:mm",
+        "interpolate": "linear",
+        "nodata": "Waiting...",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "100",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 640,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_template_risk_map",
+        "type": "ui_template",
+        "z": "tab_flood",
+        "group": "grp_risk",
+        "name": "Risk Map List",
+        "order": 2,
+        "width": 6,
+        "height": 5,
+        "format": "<div class=\"risk-map-panel\">\n    <h4>District Risk Status</h4>\n    <ul class=\"risk-list\">\n        <li>\n            <span class=\"loc\">Wong Chuk Hang</span>\n            <span class=\"status {{msg.payload.risk_level}}\">{{msg.payload.risk_level}}</span>\n        </li>\n        <li>\n            <span class=\"loc\">Aberdeen Centre</span>\n            <!-- Simulating slightly lower risk for Aberdeen -->\n            <span class=\"status {{msg.payload.risk_score > 70 ? 'High' : 'Low'}}\">\n                {{msg.payload.risk_score > 70 ? 'High' : 'Moderate'}}\n            </span>\n        </li>\n        <li>\n            <span class=\"loc\">Repulse Bay</span>\n            <span class=\"status Low\">Low</span>\n        </li>\n        <li>\n            <span class=\"loc\">Ap Lei Chau</span>\n            <span class=\"status Moderate\">Moderate</span>\n        </li>\n    </ul>\n    <div class=\"traffic-alert\">\n        <strong>Traffic Impact:</strong> {{msg.payload.traffic_status}} ({{msg.payload.traffic_speed}} km/h)\n    </div>\n</div>\n<style>\n.risk-list { list-style:none; padding:0; margin:0; }\n.risk-list li { \n    display:flex; justify-content:space-between; \n    padding: 10px 0; border-bottom: 1px solid #eee;\n}\n.loc { font-weight: 600; }\n.status { padding: 2px 8px; border-radius: 4px; font-size: 12px; color: white; }\n.status.Low { background-color: #56ab2f; }\n.status.Moderate { background-color: #ff9966; }\n.status.High { background-color: #e60000; }\n.status.Extreme { background-color: #800000; animation: blink 1s infinite; }\n.traffic-alert { margin-top: 15px; padding: 10px; background: #f8f9fa; border-left: 4px solid #0094ce; }\n@keyframes blink { 50% { opacity: 0.5; } }\n</style>",
+        "storeOutMessages": false,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "x": 620,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "func_emergency_logic",
+        "type": "function",
+        "z": "tab_flood",
+        "name": "Emergency Logic",
+        "func": "var risk = msg.payload;\nvar weather = flow.get('flood_weather');\n\n// --- Emergency Response Logic ---\nvar status = \"Normal\";\nvar action = \"Monitor Situation\";\nvar shelter = \"Not Active\";\nvar route = \"All Routes Open\";\n\nif (risk.risk_level === \"Extreme\" || risk.risk_level === \"High\") {\n    status = \"EMERGENCY\";\n    action = \"EVACUATE Low-lying Areas\";\n    shelter = \"OPEN: Aberdeen Sports Centre\";\n    route = \"AVOID: Wong Chuk Hang Rd -> USE: Pok Fu Lam Rd\";\n} else if (risk.risk_level === \"Moderate\") {\n    status = \"ALERT\";\n    action = \"Avoid Underground Parking\";\n    shelter = \"Standby\";\n    route = \"Congestion Warning: Aberdeen Tunnel\";\n}\n\nvar responseData = {\n    status: status,\n    action: action,\n    shelter: shelter,\n    route: route,\n    timestamp: new Date()\n};\n\n// Alert Toast Trigger\nif (status === \"EMERGENCY\") {\n    var alertMsg = {topic: \"FLOOD WARNING\", payload: \"Critical Water Level in Wong Chuk Hang!\"};\n    return [{payload: responseData}, alertMsg];\n}\n\nreturn [{payload: responseData}, null];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 440,
+        "wires": [
+            [
+                "ui_template_response",
+                "ui_template_kpi",
+                "db_emergency"
+            ],
+            [
+                "ui_toast_alert"
+            ]
+        ]
+    },
+    {
+        "id": "db_emergency",
+        "type": "mongodb3 in",
+        "z": "tab_flood",
+        "service": "mongo_conf",
+        "configNode": "mongo_conf",
+        "name": "DB: Emergency",
+        "collection": "emergency_log",
+        "operation": "insert",
+        "x": 820,
+        "y": 400,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_template_response",
+        "type": "ui_template",
+        "z": "tab_flood",
+        "group": "grp_response",
+        "name": "Action Panel",
+        "order": 1,
+        "width": 12,
+        "height": 5,
+        "format": "<div class=\"response-container {{msg.payload.status}}\">\n    <div class=\"header\">RESPONSE LEVEL: {{msg.payload.status}}</div>\n    <div class=\"cards\">\n        <div class=\"card\">\n            <i class=\"fa fa-bullhorn\"></i>\n            <h5>Action Required</h5>\n            <p>{{msg.payload.action}}</p>\n        </div>\n        <div class=\"card\">\n            <i class=\"fa fa-home\"></i>\n            <h5>Shelter Status</h5>\n            <p>{{msg.payload.shelter}}</p>\n        </div>\n        <div class=\"card\">\n            <i class=\"fa fa-road\"></i>\n            <h5>Safe Route</h5>\n            <p>{{msg.payload.route}}</p>\n        </div>\n    </div>\n</div>\n<style>\n.response-container { padding: 15px; border-radius: 8px; background: #f0f0f0; }\n.response-container.EMERGENCY { background: #ffebee; border: 2px solid red; }\n.response-container.ALERT { background: #fff3e0; border: 2px solid orange; }\n\n.header { font-size: 20px; font-weight: bold; margin-bottom: 15px; text-align: center; }\n.EMERGENCY .header { color: #d32f2f; animation: blink 1s infinite; }\n.ALERT .header { color: #f57c00; }\n\n.cards { display: flex; gap: 10px; }\n.card { \n    flex: 1; background: white; padding: 15px; \n    border-radius: 6px; text-align: center; \n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n}\n.card i { font-size: 24px; color: #0094ce; margin-bottom: 10px; }\n.card h5 { margin: 0 0 5px 0; color: #666; font-size: 12px; text-transform: uppercase; }\n.card p { margin: 0; font-weight: bold; font-size: 14px; }\n\n@media (max-width: 600px) {\n    .cards { flex-direction: column; }\n}\n</style>",
+        "storeOutMessages": false,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "x": 810,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_toast_alert",
+        "type": "ui_toast",
+        "z": "tab_flood",
+        "position": "top right",
+        "displayTime": "10",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "ok": "ACKNOWLEDGE",
+        "cancel": "",
+        "raw": false,
+        "topic": "",
+        "name": "Flood Alert",
+        "x": 810,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "ui_template_kpi",
+        "type": "ui_template",
+        "z": "tab_flood",
+        "group": "grp_kpi",
+        "name": "Situational Dashboard",
+        "order": 1,
+        "width": 12,
+        "height": 6,
+        "format": "<div class=\"kpi-wrap\">\n    <h3>SOUTHERN DISTRICT SITUATION</h3>\n    <table class=\"kpi-table\">\n        <tr>\n            <th>Rainfall</th>\n            <th>Tide Level</th>\n            <th>Risk Score</th>\n        </tr>\n        <tr>\n            <td class=\"val\">{{msg.payload.weather.rainfall_mm}} mm</td>\n            <td class=\"val\">{{msg.payload.weather.tide_level_m}} m</td>\n            <td class=\"val risk-{{msg.payload.risk.risk_level}}\">{{msg.payload.risk.risk_score}}</td>\n        </tr>\n    </table>\n    <div class=\"status-bar\">\n        <span>Warning Signal: <strong>{{msg.payload.weather.warning_signal}}</strong></span>\n        <span style=\"float:right\">Last Update: {{msg.payload.timestamp}}</span>\n    </div>\n    <div class=\"damage-est\">\n        Possible Economic Impact: \n        <strong>HK$ {{msg.payload.risk.risk_score > 80 ? '50M+' : msg.payload.risk.risk_score > 50 ? '10M+' : '< 1M'}}</strong>\n    </div>\n</div>\n<style>\n.kpi-wrap { padding: 10px; }\n.kpi-wrap h3 { color: #0094ce; border-bottom: 2px solid #eee; padding-bottom: 10px; }\n.kpi-table { width: 100%; text-align: center; margin: 15px 0; }\n.kpi-table th { color: #888; font-size: 12px; text-transform: uppercase; }\n.val { font-size: 28px; font-weight: bold; padding: 10px 0; }\n.risk-Extreme { color: #d32f2f; } .risk-High { color: #f57c00; }\n.status-bar { background: #333; color: white; padding: 8px; border-radius: 4px; font-size: 12px; }\n.damage-est { margin-top: 15px; text-align: center; font-size: 16px; color: #555; }\n</style>",
+        "storeOutMessages": false,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "x": 840,
+        "y": 580,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "func_agg_kpi",
+        "type": "function",
+        "z": "tab_flood",
+        "name": "Aggregate Data",
+        "func": "var weather = flow.get('flood_weather') || {};\nvar risk = flow.get('flood_risk') || {};\n\nmsg.payload = {\n    weather: weather,\n    risk: risk,\n    timestamp: new Date().toLocaleTimeString()\n};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 580,
+        "wires": [
+            [
+                "ui_template_kpi"
+            ]
+        ]
+    },
+    {
+        "id": "inj_kpi",
+        "type": "inject",
+        "z": "tab_flood",
+        "name": "Trigger 5s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 580,
+        "wires": [
+            [
+                "func_agg_kpi"
+            ]
+        ]
+    }
+]

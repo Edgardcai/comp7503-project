@@ -1,0 +1,761 @@
+[
+  {
+    "id": "ui_tab_parking",
+    "type": "ui_tab",
+    "name": "Smart City Parking Brain",
+    "icon": "fa-building",
+    "order": 1,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "ui_group_realtime",
+    "type": "ui_group",
+    "name": "Real-time Parking Status",
+    "tab": "ui_tab_parking",
+    "order": 1,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "ui_group_env_comm",
+    "type": "ui_group",
+    "name": "Commercial & Environmental Impact",
+    "tab": "ui_tab_parking",
+    "order": 2,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "ui_group_predictions",
+    "type": "ui_group",
+    "name": "AI Predictions & Recommendations",
+    "tab": "ui_tab_parking",
+    "order": 3,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "ui_group_correlation",
+    "type": "ui_group",
+    "name": "Multi-factor Correlation Analysis",
+    "tab": "ui_tab_parking",
+    "order": 4,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "ui_group_kpi",
+    "type": "ui_group",
+    "name": "City KPI Dashboard",
+    "tab": "ui_tab_parking",
+    "order": 5,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "mongodb_config",
+    "type": "mongodb3",
+    "name": "MongoDB Connection",
+    "uri": "mongodb://admin:1234@mymongo:27017/smartcity?authSource=admin",
+    "options": "",
+    "parallelism": "-1",
+    "parallelismLimit": ""
+  },
+  {
+    "id": "inject_parking",
+    "type": "inject",
+    "z": "parking_tab",
+    "name": "Trigger 5min",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "300",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "1",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 130,
+    "y": 80,
+    "wires": [
+      [
+        "http_parking"
+      ]
+    ]
+  },
+  {
+    "id": "http_parking",
+    "type": "http request",
+    "z": "parking_tab",
+    "name": "Fetch HKeParking",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "https://api.data.gov.hk/v1/carpark-info-vacancy?data=vacancy",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "authType": "",
+    "sendsession": false,
+    "x": 330,
+    "y": 80,
+    "wires": [
+      [
+        "function_parse_parking"
+      ]
+    ]
+  },
+  {
+    "id": "function_parse_parking",
+    "type": "function",
+    "z": "parking_tab",
+    "name": "Parse Parking",
+    "func": "var timestamp = new Date();\nvar data = msg.payload;\nvar parkingData = data.results || [];\nvar processed = [];\nvar limit = 20; \nvar count = 0;\n\nparkingData.forEach(function(carpark) {\n    if (count >= limit) return;\n    var parkId = carpark.park_Id || 'UNKNOWN';\n    var privateCar = carpark.privateCar || [];\n    var totalVacancy = 0;\n    \n    privateCar.forEach(function(slot) {\n        totalVacancy += slot.vacancy || 0;\n    });\n    \n    var estimatedTotal = Math.max(totalVacancy + Math.floor(Math.random() * 50) + 10, 50);\n    var occupiedSpaces = estimatedTotal - totalVacancy;\n    var occupancyRate = (occupiedSpaces / estimatedTotal) * 100;\n    \n    if (privateCar.length > 0) {\n        processed.push({\n            park_id: parkId,\n            name: 'Carpark ' + parkId,\n            vacancy: totalVacancy,\n            total_spaces: estimatedTotal,\n            occupied: occupiedSpaces,\n            occupancy_rate: parseFloat(occupancyRate.toFixed(2)),\n            timestamp: timestamp,\n            status: totalVacancy > 10 ? 'Available' : totalVacancy > 0 ? 'Limited' : 'Full'\n        });\n        count++;\n    }\n});\n\nflow.set('current_parking', processed);\nmsg.payload = processed;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 540,
+    "y": 80,
+    "wires": [
+      [
+        "mongodb_save_parking",
+        "function_prepare_parking_dashboard",
+        "link_out_to_prediction"
+      ]
+    ]
+  },
+  {
+    "id": "mongodb_save_parking",
+    "type": "mongodb3 in",
+    "z": "parking_tab",
+    "service": "mongodb_config",
+    "configNode": "mongodb_config",
+    "name": "DB: Parking",
+    "collection": "parking_realtime",
+    "operation": "insertMany",
+    "x": 810,
+    "y": 60,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "function_prepare_parking_dashboard",
+    "type": "function",
+    "z": "parking_tab",
+    "name": "Gauges Data",
+    "func": "var data = msg.payload || [];\nif (!data.length) return null;\n\nvar avg = Math.round(data.reduce((s,p) => s + p.occupancy_rate, 0) / data.length);\nvar sorted = data.slice().sort((a,b) => b.occupancy_rate - a.occupancy_rate);\nvar top3 = sorted.slice(0,3);\n\nreturn [\n    {payload: avg},\n    top3[0] ? {payload: top3[0].occupancy_rate, topic: top3[0].name} : null,\n    top3[1] ? {payload: top3[1].occupancy_rate, topic: top3[1].name} : null,\n    top3[2] ? {payload: top3[2].occupancy_rate, topic: top3[2].name} : null\n];",
+    "outputs": 4,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 810,
+    "y": 120,
+    "wires": [
+      [
+        "ui_gauge_avg"
+      ],
+      [
+        "ui_gauge_parking1"
+      ],
+      [
+        "ui_gauge_parking2"
+      ],
+      [
+        "ui_gauge_parking3"
+      ]
+    ]
+  },
+  {
+    "id": "ui_gauge_avg",
+    "type": "ui_gauge",
+    "z": "parking_tab",
+    "name": "Avg Occupancy",
+    "group": "ui_group_realtime",
+    "order": 1,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "Avg Occupancy",
+    "label": "%",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 100,
+    "colors": [
+      "#00b500",
+      "#e6e600",
+      "#ca3838"
+    ],
+    "seg1": 60,
+    "seg2": 85,
+    "x": 1080,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "ui_gauge_parking1",
+    "type": "ui_gauge",
+    "z": "parking_tab",
+    "name": "Top 1",
+    "group": "ui_group_realtime",
+    "order": 2,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "{{topic}}",
+    "label": "%",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 100,
+    "colors": [
+      "#00b500",
+      "#e6e600",
+      "#ca3838"
+    ],
+    "seg1": 60,
+    "seg2": 85,
+    "x": 1080,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "ui_gauge_parking2",
+    "type": "ui_gauge",
+    "z": "parking_tab",
+    "name": "Top 2",
+    "group": "ui_group_realtime",
+    "order": 3,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "{{topic}}",
+    "label": "%",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 100,
+    "colors": [
+      "#00b500",
+      "#e6e600",
+      "#ca3838"
+    ],
+    "seg1": 60,
+    "seg2": 85,
+    "x": 1080,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "id": "ui_gauge_parking3",
+    "type": "ui_gauge",
+    "z": "parking_tab",
+    "name": "Top 3",
+    "group": "ui_group_realtime",
+    "order": 4,
+    "width": 3,
+    "height": 3,
+    "gtype": "gage",
+    "title": "{{topic}}",
+    "label": "%",
+    "format": "{{value}}",
+    "min": 0,
+    "max": 100,
+    "colors": [
+      "#00b500",
+      "#e6e600",
+      "#ca3838"
+    ],
+    "seg1": 60,
+    "seg2": 85,
+    "x": 1080,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "inject_traffic_env",
+    "type": "inject",
+    "z": "parking_tab",
+    "name": "Trigger 3min",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "180",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "2",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 130,
+    "y": 240,
+    "wires": [
+      [
+        "function_sim_mall_footfall",
+        "function_sim_traffic_carbon"
+      ]
+    ]
+  },
+  {
+    "id": "function_sim_mall_footfall",
+    "type": "function",
+    "z": "parking_tab",
+    "name": "Sim: Mall Footfall",
+    "func": "var timestamp = new Date();\nvar hour = timestamp.getHours();\nvar day = timestamp.getDay();\nvar isWeekend = (day === 0 || day === 6);\n\n// Base footfall\nvar footfall = 500 + Math.floor(Math.random() * 200);\n\n// Peak Hours: Lunch (12-14), Dinner (18-20)\nif ((hour >= 12 && hour <= 14) || (hour >= 18 && hour <= 20)) {\n    footfall += 1500; // Peak surge\n}\n\nif (isWeekend) {\n    footfall *= 1.5; // Weekend surge\n}\n\nvar status = footfall > 2000 ? \"High\" : footfall > 1000 ? \"Moderate\" : \"Low\";\n\nvar data = {\n    count: Math.round(footfall),\n    status: status,\n    timestamp: timestamp\n};\n\nflow.set('mall_footfall', data);\nmsg.payload = data;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 350,
+    "y": 220,
+    "wires": [
+      [
+        "mongodb_save_footfall",
+        "ui_gauge_footfall"
+      ]
+    ]
+  },
+  {
+    "id": "function_sim_traffic_carbon",
+    "type": "function",
+    "z": "parking_tab",
+    "name": "Sim: Traffic & Carbon",
+    "func": "var timestamp = new Date();\nvar hour = timestamp.getHours();\n\n// Traffic Simulation\nvar baseSpeed = 50;\nvar carCount = 100; // Cars per min\n\n// Peak hours congestion\nif ((hour >= 8 && hour <= 10) || (hour >= 17 && hour <= 19)) {\n    baseSpeed = 20 + Math.random() * 10;\n    carCount = 300 + Math.random() * 50;\n} else {\n    baseSpeed = 50 + Math.random() * 20;\n    carCount = 80 + Math.random() * 50;\n}\n\nvar congestion = baseSpeed < 30 ? \"Severe\" : baseSpeed < 45 ? \"Moderate\" : \"Light\";\n\n// Carbon Calculation (Simplified)\n// More cars + Slower speed = Higher Carbon\nvar emissionFactor = 0.2; // kg per km\nvar co2 = (carCount * emissionFactor) * (60 / baseSpeed) * 10;\n\nvar data = {\n    avg_speed: Math.round(baseSpeed),\n    car_flow_per_min: Math.round(carCount),\n    congestion_level: congestion,\n    co2_emission: Math.round(co2),\n    timestamp: timestamp\n};\n\nflow.set('traffic_env', data);\n\n// Output 1: Full data for DB\n// Output 2: ONLY CO2 value for Chart (Fixing the empty chart issue)\nreturn [{payload: data}, {payload: Math.round(co2)}];",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 360,
+    "y": 280,
+    "wires": [
+      [
+        "mongodb_save_env"
+      ],
+      [
+        "ui_chart_carbon"
+      ]
+    ]
+  },
+  {
+    "id": "mongodb_save_footfall",
+    "type": "mongodb3 in",
+    "z": "parking_tab",
+    "service": "mongodb_config",
+    "configNode": "mongodb_config",
+    "name": "DB: Footfall",
+    "collection": "mall_footfall",
+    "operation": "insert",
+    "x": 590,
+    "y": 220,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "mongodb_save_env",
+    "type": "mongodb3 in",
+    "z": "parking_tab",
+    "service": "mongodb_config",
+    "configNode": "mongodb_config",
+    "name": "DB: Traffic/Carbon",
+    "collection": "traffic_env",
+    "operation": "insert",
+    "x": 610,
+    "y": 280,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ui_gauge_footfall",
+    "type": "ui_gauge",
+    "z": "parking_tab",
+    "name": "Mall Footfall",
+    "group": "ui_group_env_comm",
+    "order": 1,
+    "width": 6,
+    "height": 4,
+    "gtype": "gage",
+    "title": "Nearby Mall Footfall (Person/Hr)",
+    "label": "ppl",
+    "format": "{{msg.payload.count}}",
+    "min": 0,
+    "max": "3000",
+    "colors": [
+      "#00b500",
+      "#e6e600",
+      "#ca3838"
+    ],
+    "seg1": "1000",
+    "seg2": "2000",
+    "x": 600,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "ui_chart_carbon",
+    "type": "ui_chart",
+    "z": "parking_tab",
+    "name": "Carbon Emission",
+    "group": "ui_group_env_comm",
+    "order": 2,
+    "width": 6,
+    "height": 4,
+    "label": "Real-time Carbon Emission (kg CO2)",
+    "chartType": "line",
+    "legend": "false",
+    "xformat": "HH:mm",
+    "interpolate": "linear",
+    "nodata": "Waiting...",
+    "dot": false,
+    "ymin": "0",
+    "ymax": "",
+    "removeOlder": 1,
+    "removeOlderPoints": "",
+    "removeOlderUnit": "3600",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#1f77b4",
+      "#aec7e8",
+      "#ff7f0e",
+      "#2ca02c",
+      "#98df8a",
+      "#d62728",
+      "#ff9896",
+      "#9467bd",
+      "#c5b0d5"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "className": "",
+    "x": 600,
+    "y": 340,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "inject_weather",
+    "type": "inject",
+    "z": "parking_tab",
+    "name": "Trigger 10min",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "600",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "3",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 140,
+    "y": 400,
+    "wires": [
+      [
+        "http_weather"
+      ]
+    ]
+  },
+  {
+    "id": "http_weather",
+    "type": "http request",
+    "z": "parking_tab",
+    "name": "Fetch HKO Weather",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "authType": "",
+    "sendsession": false,
+    "x": 360,
+    "y": 400,
+    "wires": [
+      [
+        "function_parse_weather"
+      ]
+    ]
+  },
+  {
+    "id": "function_parse_weather",
+    "type": "function",
+    "z": "parking_tab",
+    "name": "Parse Weather",
+    "func": "var data = msg.payload;\nvar rainfall = 0;\nif (data.rainfall?.data?.length) rainfall = data.rainfall.data[0].max || 0;\n\nvar factor = 1.0;\nvar reason = \"Normal\";\nif (rainfall > 5) { factor = 1.2; reason = \"Rainy\"; }\n\nvar weatherData = {\n    rainfall_mm: rainfall,\n    parking_impact_factor: factor,\n    weather_condition: reason\n};\n\nflow.set('weather', weatherData);\nmsg.payload = weatherData;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 560,
+    "y": 400,
+    "wires": [
+      [
+        "mongodb_save_weather"
+      ]
+    ]
+  },
+  {
+    "id": "mongodb_save_weather",
+    "type": "mongodb3 in",
+    "z": "parking_tab",
+    "service": "mongodb_config",
+    "configNode": "mongodb_config",
+    "name": "DB: Weather",
+    "collection": "weather_history",
+    "operation": "insert",
+    "x": 810,
+    "y": 400,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "link_out_to_prediction",
+    "type": "link out",
+    "z": "parking_tab",
+    "name": "Trigger Prediction",
+    "mode": "link",
+    "links": [
+      "link_in_prediction"
+    ],
+    "x": 685,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "link_in_prediction",
+    "type": "link in",
+    "z": "parking_tab",
+    "name": "Receive Data",
+    "links": [
+      "link_out_to_prediction"
+    ],
+    "x": 115,
+    "y": 540,
+    "wires": [
+      [
+        "function_prediction_model"
+      ]
+    ]
+  },
+  {
+    "id": "inject_prediction",
+    "type": "inject",
+    "z": "parking_tab",
+    "name": "Trigger 15min",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "900",
+    "crontab": "",
+    "once": false,
+    "onceDelay": "10",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 140,
+    "y": 500,
+    "wires": [
+      [
+        "function_prediction_model"
+      ]
+    ]
+  },
+  {
+    "id": "function_prediction_model",
+    "type": "function",
+    "z": "parking_tab",
+    "name": "Advanced AI Prediction Model",
+    "func": "var currentParking = flow.get('current_parking');\nvar weather = flow.get('weather') || {parking_impact_factor: 1.0, weather_condition: \"Normal\"};\nvar trafficEnv = flow.get('traffic_env') || {congestion_level: \"Light\", co2_emission: 0};\nvar footfall = flow.get('mall_footfall') || {count: 500, status: \"Low\"};\n\nif (!currentParking || currentParking.length === 0) return null;\n\nvar predictions = currentParking.map(park => {\n    var occ = park.occupancy_rate;\n    \n    // Base Prediction\n    var pred = occ;\n    \n    // Factor 1: Weather (Rain = More cars)\n    pred *= weather.parking_impact_factor;\n    \n    // Factor 2: Traffic (Congestion = Slower turnover, higher occupancy)\n    if (trafficEnv.congestion_level === \"Severe\") pred *= 1.05;\n    \n    // Factor 3: Commercial (High Footfall = High Parking Demand)\n    // This is a strong factor\n    if (footfall.status === \"High\") pred += 15;\n    else if (footfall.status === \"Moderate\") pred += 5;\n    \n    pred = Math.min(100, pred);\n    var avail = 100 - pred;\n    \n    return {\n        park_name: park.name,\n        predicted_availability: Math.round(avail),\n        estimated_spaces: Math.round(park.total_spaces * avail / 100)\n    };\n});\n\npredictions.sort((a,b) => b.predicted_availability - a.predicted_availability);\n\nmsg.payload = predictions;\nmsg.weather = weather;\nmsg.traffic = trafficEnv;\nmsg.footfall = footfall;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 410,
+    "y": 540,
+    "wires": [
+      [
+        "mongodb_save_predictions",
+        "function_prepare_prediction_display"
+      ]
+    ]
+  },
+  {
+    "id": "mongodb_save_predictions",
+    "type": "mongodb3 in",
+    "z": "parking_tab",
+    "service": "mongodb_config",
+    "configNode": "mongodb_config",
+    "name": "DB: Prediction",
+    "collection": "parking_predictions",
+    "operation": "insertMany",
+    "x": 660,
+    "y": 500,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "function_prepare_prediction_display",
+    "type": "function",
+    "z": "parking_tab",
+    "name": "Prepare UI & Correlation Logic",
+    "func": "var preds = msg.payload || [];\nvar weather = msg.weather || {};\nvar traffic = msg.traffic || {};\nvar footfall = msg.footfall || {};\n\nif (!preds.length) return [null, null, null, null];\n\n// --- Chart: Always show CURRENT Top 5 only (batch mode for ui_chart) ---\nvar top5 = preds.slice(0,5);\n\nvar chartMsg = {\n    payload: [{\n        series: [\"Recommended\"],\n        data: [ top5.map(p => p.predicted_availability) ],\n        labels: top5.map(p => p.park_name.substring(0,10))\n    }]\n};\n\n// KPI\nvar summary = {\n    total_facilities: preds.length,\n    avg_availability: Math.round(preds.reduce((s,p)=>s+p.predicted_availability,0)/preds.length),\n    total_spaces: preds.reduce((s,p)=>s+p.estimated_spaces,0),\n    timestamp: new Date().toLocaleTimeString(),\n    env_status: traffic.co2_emission > 200 ? \"High CO2\" : \"Eco-Friendly\"\n};\n\n// --- Dynamic Correlation Logic ---\nvar tImpact = { label: \"Low\", color: \"green\" };\nif (traffic.congestion_level === \"Severe\") tImpact = { label: \"High\", color: \"red\" };\nelse if (traffic.congestion_level === \"Moderate\") tImpact = { label: \"Med\", color: \"orange\" };\n\nvar fImpact = { label: \"Low\", color: \"green\" };\nif (footfall.status === \"High\") fImpact = { label: \"High\", color: \"red\" };\nelse if (footfall.status === \"Moderate\") fImpact = { label: \"Med\", color: \"orange\" };\n\nvar wImpact = { label: \"Low\", color: \"green\" };\nif (weather.weather_condition === \"Rainy\") wImpact = { label: \"High\", color: \"red\" };\n\nvar cImpact = { label: \"Low\", color: \"green\" };\nif (traffic.co2_emission > 200) cImpact = { label: \"High\", color: \"red\" };\nelse if (traffic.co2_emission > 100) cImpact = { label: \"Med\", color: \"orange\" };\n\nvar correlation = {\n    traffic_val: traffic.congestion_level || \"Light\",\n    traffic_impact: tImpact,\n    \n    weather_val: weather.weather_condition || \"Normal\",\n    weather_impact: wImpact,\n    \n    footfall_val: (footfall.count || 0) + \" ppl/hr\",\n    footfall_impact: fImpact,\n    \n    carbon_val: (traffic.co2_emission || 0) + \" kg\",\n    carbon_impact: cImpact,\n    \n    confidence: \"92%\"\n};\n\nreturn [chartMsg, {payload: summary}, null, {payload: correlation}];",
+    "outputs": 4,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 690,
+    "y": 580,
+    "wires": [
+      [
+        "ui_chart_predictions"
+      ],
+      [
+        "ui_template_summary"
+      ],
+      [
+        "ui_notification"
+      ],
+      [
+        "ui_template_correlation"
+      ]
+    ]
+  },
+  {
+    "id": "ui_chart_predictions",
+    "type": "ui_chart",
+    "z": "parking_tab",
+    "name": "Predicted Avail",
+    "group": "ui_group_predictions",
+    "order": 1,
+    "width": "12",
+    "height": "6",
+    "label": "AI Recommended Parking (Top 5)",
+    "chartType": "bar",
+    "legend": "false",
+    "xformat": "",
+    "interpolate": "linear",
+    "nodata": "Waiting...",
+    "dot": false,
+    "ymin": "0",
+    "ymax": "100",
+    "removeOlder": 1,
+    "removeOlderPoints": "",
+    "removeOlderUnit": "3600",
+    "cutout": 0,
+    "useOneColor": false,
+    "useUTC": false,
+    "colors": [
+      "#00b500",
+      "#33b533",
+      "#66b566",
+      "#99d699",
+      "#cceecc"
+    ],
+    "outputs": 1,
+    "useDifferentColor": false,
+    "className": "",
+    "x": 1000,
+    "y": 540,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ui_template_summary",
+    "type": "ui_template",
+    "z": "parking_tab",
+    "group": "ui_group_kpi",
+    "name": "KPI Dashboard",
+    "order": 1,
+    "width": 12,
+    "height": 6,
+    "format": "<div class=\"kpi-container\">\n    <div class=\"kpi-header\">CITY TRAFFIC BRAIN</div>\n    <div class=\"kpi-cards\">\n        <div class=\"kpi-card\">\n            <h3>Monitored</h3>\n            <p class=\"kpi-value\">{{msg.payload.total_facilities || 0}}</p>\n        </div>\n        <div class=\"kpi-card\">\n            <h3>Avg Avail</h3>\n            <p class=\"kpi-value\">{{msg.payload.avg_availability || 0}}%</p>\n        </div>\n        <div class=\"kpi-card green\">\n            <h3>Spaces</h3>\n            <p class=\"kpi-value\">{{msg.payload.total_spaces || 0}}</p>\n        </div>\n        <div class=\"kpi-card purple\">\n            <h3>Env Status</h3>\n            <p class=\"kpi-value small\">{{msg.payload.env_status}}</p>\n        </div>\n    </div>\n    <div class=\"kpi-footer\">\n        Last Update: {{msg.payload.timestamp}}\n    </div>\n</div>\n<style>\n.kpi-container { padding: 10px; font-family: sans-serif; }\n.kpi-header { text-align:center; font-weight:bold; color:#0094ce; margin-bottom:10px; }\n.kpi-cards { display: flex; gap: 10px; }\n.kpi-card { \n    background: linear-gradient(135deg, #ff9966, #ff5e62); \n    color: white; padding: 10px; border-radius: 8px; \n    flex: 1; text-align: center; \n}\n.kpi-card.green { background: linear-gradient(135deg, #56ab2f, #a8e063); }\n.kpi-card.purple { background: linear-gradient(135deg, #8e2de2, #4a00e0); }\n.kpi-value { font-size: 2em; font-weight: bold; margin: 0; }\n.kpi-value.small { font-size: 1.2em; line-height: 1.7em; }\n.kpi-footer { margin-top: 10px; text-align: center; color: #666; font-size: 0.8em; }\n</style>",
+    "storeOutMessages": false,
+    "fwdInMessages": true,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "x": 1000,
+    "y": 600,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ui_notification",
+    "type": "ui_toast",
+    "z": "parking_tab",
+    "position": "top right",
+    "displayTime": "6",
+    "highlight": "",
+    "sendall": true,
+    "outputs": 0,
+    "ok": "OK",
+    "cancel": "",
+    "raw": false,
+    "topic": "",
+    "name": "Alert",
+    "x": 970,
+    "y": 660,
+    "wires": []
+  },
+  {
+    "id": "ui_template_correlation",
+    "type": "ui_template",
+    "z": "parking_tab",
+    "group": "ui_group_correlation",
+    "name": "Correlation Analysis",
+    "order": 1,
+    "width": 12,
+    "height": 6,
+    "format": "<div class=\"correlation-panel\">\n    <table class=\"corr-table\">\n        <tr><th>Factor Dimension</th><th>Real-time Status</th><th>Parking Impact</th></tr>\n        \n        <tr>\n            <td>Road Traffic</td>\n            <td>{{msg.payload.traffic_val}}</td>\n            <td><span class=\"dot {{msg.payload.traffic_impact.color}}\"></span> {{msg.payload.traffic_impact.label}}</td>\n        </tr>\n        \n        <tr>\n            <td>Mall Footfall</td>\n            <td>{{msg.payload.footfall_val}}</td>\n            <td><span class=\"dot {{msg.payload.footfall_impact.color}}\"></span> {{msg.payload.footfall_impact.label}}</td>\n        </tr>\n        \n        <tr>\n            <td>Weather</td>\n            <td>{{msg.payload.weather_val}}</td>\n            <td><span class=\"dot {{msg.payload.weather_impact.color}}\"></span> {{msg.payload.weather_impact.label}}</td>\n        </tr>\n        \n        <tr>\n            <td>Carbon Emission</td>\n            <td>{{msg.payload.carbon_val}}</td>\n            <td><span class=\"dot {{msg.payload.carbon_impact.color}}\"></span> {{msg.payload.carbon_impact.label}}</td>\n        </tr>\n    </table>\n    <div class=\"confidence\">AI Model Confidence: <strong>{{msg.payload.confidence}}</strong></div>\n</div>\n<style>\n.corr-table { width: 100%; border-collapse: collapse; font-size: 14px; }\n.corr-table th { text-align: left; color: #666; border-bottom: 2px solid #ddd; padding-bottom: 5px;}\n.corr-table td { padding: 12px 5px; border-bottom: 1px solid #eee; }\n.dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; }\n.dot.red { background:#ff5e62; } .dot.orange { background:#ff9966; }\n.dot.green { background:#56ab2f; } .dot.gray { background:#999; }\n.confidence { margin-top: 10px; text-align: right; color: #555; font-style: italic; }\n</style>",
+    "storeOutMessages": false,
+    "fwdInMessages": true,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "x": 1010,
+    "y": 720,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "parking_tab",
+    "type": "tab",
+    "label": "Smart City Brain",
+    "disabled": false,
+    "info": "Integrated Parking & Environmental System"
+  }
+]

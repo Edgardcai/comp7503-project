@@ -1,0 +1,815 @@
+[
+    {
+        "id": "ui_base_config",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#0094CE",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#0094CE",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#1bbfff",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#0094ce",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey",
+                "palette": "light"
+            }
+        },
+        "site": {
+            "name": "Node-RED Dashboard",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
+    },
+    {
+        "id": "ui_tab_parking",
+        "type": "ui_tab",
+        "name": "Smart Parking Dashboard",
+        "icon": "fa-car",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "parking_tab",
+        "type": "tab",
+        "label": "Smart Parking System",
+        "disabled": false,
+        "info": "Intelligent Parking Prediction and Navigation System for Central-Admiralty Business District"
+    },
+    {
+        "id": "ui_group_realtime",
+        "type": "ui_group",
+        "name": "Real-time Parking Monitoring",
+        "tab": "ui_tab_parking",
+        "order": 1,
+        "disp": true,
+        "width": "12",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "ui_group_predictions",
+        "type": "ui_group",
+        "name": "Parking Predictions & Recommendations",
+        "tab": "ui_tab_parking",
+        "order": 2,
+        "disp": true,
+        "width": "12",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "ui_group_correlation",
+        "type": "ui_group",
+        "name": "Multi-factor Correlation Analysis",
+        "tab": "ui_tab_parking",
+        "order": 3,
+        "disp": true,
+        "width": "12",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "ui_group_kpi",
+        "type": "ui_group",
+        "name": "Key Performance Indicators",
+        "tab": "ui_tab_parking",
+        "order": 4,
+        "disp": true,
+        "width": "12",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "comment_main",
+        "type": "comment",
+        "z": "parking_tab",
+        "name": "Smart Parking Data Collection & Analysis Flow",
+        "info": "Collects real-time parking, traffic, and weather data from HK Gov APIs, analyzes occupancy patterns, predicts availability, and provides intelligent recommendations",
+        "x": 220,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "comment_parking",
+        "type": "comment",
+        "z": "parking_tab",
+        "name": "Real-time Parking Data from data.gov.hk",
+        "info": "Fetches parking vacancy data from HKeParking API every 5 minutes",
+        "x": 210,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "inject_parking",
+        "type": "inject",
+        "z": "parking_tab",
+        "name": "Trigger every 5min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 120,
+        "wires": [
+            [
+                "http_parking"
+            ]
+        ]
+    },
+    {
+        "id": "http_parking",
+        "type": "http request",
+        "z": "parking_tab",
+        "name": "Fetch HKeParking Data",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.data.gov.hk/v1/carpark-info-vacancy?data=vacancy",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "sendsession": false,
+        "x": 360,
+        "y": 120,
+        "wires": [
+            [
+                "function_parse_parking",
+                "debug_parking"
+            ]
+        ]
+    },
+    {
+        "id": "function_parse_parking",
+        "type": "function",
+        "z": "parking_tab",
+        "name": "Parse & Filter Central/Admiralty Area",
+        "func": "// Parse vacancy data and calculate occupancy rate\nvar timestamp = new Date();\nvar data = msg.payload;\n\nvar parkingData = data.results || [];\nvar processed = [];\n\nparkingData.forEach(function(carpark) {\n    var parkId = carpark.park_Id || 'UNKNOWN';\n    \n    // Get private car vacancy\n    var privateCar = carpark.privateCar || [];\n    var totalVacancy = 0;\n    var lastUpdate = null;\n    \n    privateCar.forEach(function(slot) {\n        totalVacancy += slot.vacancy || 0;\n        if (slot.lastupdate && (!lastUpdate || slot.lastupdate > lastUpdate)) {\n            lastUpdate = slot.lastupdate;\n        }\n    });\n    \n    // Estimate total spaces based on vacancy (since we don't have total from vacancy API)\n    // Assume if there's vacancy, total is at least 2x vacancy (conservative estimate)\n    // For better accuracy, we'll need to merge with info API\n    var estimatedTotal = Math.max(totalVacancy * 3, 50); // Minimum 50 spaces\n    var occupiedSpaces = estimatedTotal - totalVacancy;\n    var occupancyRate = (occupiedSpaces / estimatedTotal) * 100;\n    \n    if (privateCar.length > 0) {\n        processed.push({\n            park_id: parkId,\n            name: 'Carpark ' + parkId,  // Will be updated by merge with info\n            vacancy: totalVacancy,\n            total_spaces: estimatedTotal,\n            occupied: occupiedSpaces,\n            occupancy_rate: parseFloat(occupancyRate.toFixed(2)),\n            timestamp: timestamp,\n            last_update: lastUpdate,\n            status: totalVacancy > 10 ? 'Available' : totalVacancy > 0 ? 'Limited' : 'Full'\n        });\n    }\n});\n\n// Store in context for dashboard\ncontext.set('current_parking', processed);\n\nmsg.payload = processed;\nreturn msg;\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 120,
+        "wires": [
+            [
+                "func_save_parking",
+                "function_prepare_parking_dashboard"
+            ]
+        ]
+    },
+    {
+        "id": "debug_parking",
+        "type": "debug",
+        "z": "parking_tab",
+        "name": "Debug Parking",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 640,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "comment_traffic",
+        "type": "comment",
+        "z": "parking_tab",
+        "name": "Traffic Speed & Congestion Data",
+        "info": "Monitors traffic conditions in Central-Admiralty area",
+        "x": 190,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "inject_traffic",
+        "type": "inject",
+        "z": "parking_tab",
+        "name": "Trigger every 5min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 260,
+        "wires": [
+            [
+                "function_simulate_traffic"
+            ]
+        ]
+    },
+    {
+        "id": "function_simulate_traffic",
+        "type": "function",
+        "z": "parking_tab",
+        "name": "Simulate Traffic Status (Central Area)",
+        "func": "var timestamp = new Date();\nvar hour = timestamp.getHours();\nvar isMorningPeak = (hour >= 8 && hour <= 10);\nvar isEveningPeak = (hour >= 17 && hour <= 19);\nvar isLunchHour = (hour >= 12 && hour <= 14);\n\nvar locations = [\n    {name: \"Central - Des Voeux Road\", lat: 22.2819, lon: 114.1577},\n    {name: \"Admiralty - Queensway\", lat: 22.2777, lon: 114.1655},\n    {name: \"Wan Chai - Gloucester Road\", lat: 22.2770, lon: 114.1722}\n];\n\nvar trafficData = locations.map(function(loc) {\n    var baseSpeed = 50;\n    if (isMorningPeak || isEveningPeak) baseSpeed = Math.floor(Math.random() * 15) + 10;\n    else if (isLunchHour) baseSpeed = Math.floor(Math.random() * 20) + 30;\n    else baseSpeed = Math.floor(Math.random() * 25) + 50;\n    \n    var congestionLevel = baseSpeed < 20 ? \"Severe\" : baseSpeed < 35 ? \"Heavy\" : baseSpeed < 50 ? \"Moderate\" : \"Light\";\n    \n    return {\n        location: loc.name,\n        latitude: loc.lat,\n        longitude: loc.lon,\n        avg_speed_kmh: baseSpeed,\n        congestion_level: congestionLevel,\n        timestamp: timestamp\n    };\n});\n\nvar avgSpeed = Math.round(trafficData.reduce((s,t) => s + t.avg_speed_kmh, 0) / trafficData.length);\n\ncontext.set('traffic', {\n    avg_speed: avgSpeed,\n    congestion_level: avgSpeed < 25 ? \"Severe\" : avgSpeed < 40 ? \"Heavy\" : \"Light\",\n    timestamp: timestamp\n});\n\nmsg.payload = trafficData;\nmsg.collection = \"traffic_status\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 260,
+        "wires": [
+            [
+                "func_save_traffic"
+            ]
+        ]
+    },
+    {
+        "id": "comment_weather",
+        "type": "comment",
+        "z": "parking_tab",
+        "name": "Real-time Weather Data from HKO",
+        "info": "Fetches weather data to analyze impact on parking demand",
+        "x": 200,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "inject_weather",
+        "type": "inject",
+        "z": "parking_tab",
+        "name": "Trigger every 10min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "600",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 360,
+        "wires": [
+            [
+                "http_weather"
+            ]
+        ]
+    },
+    {
+        "id": "http_weather",
+        "type": "http request",
+        "z": "parking_tab",
+        "name": "Fetch HKO Weather Data",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "sendsession": false,
+        "x": 380,
+        "y": 360,
+        "wires": [
+            [
+                "function_parse_weather"
+            ]
+        ]
+    },
+    {
+        "id": "function_parse_weather",
+        "type": "function",
+        "z": "parking_tab",
+        "name": "Parse Weather & Calculate Impact",
+        "func": "var data = msg.payload;\nvar timestamp = new Date();\nvar rainfall = 0, temperature = 25, humidity = 70;\n\nif (data.rainfall?.data?.length) {\n    rainfall = Math.max(...data.rainfall.data.map(r => r.max || 0));\n}\nif (data.temperature?.data?.length) {\n    temperature = data.temperature.data.reduce((s,t) => s + (t.value || 25), 0) / data.temperature.data.length;\n}\nif (data.humidity?.data?.length) {\n    humidity = data.humidity.data.reduce((s,h) => s + (h.value || 70), 0) / data.humidity.data.length;\n}\n\nvar factor = 1.0;\nvar reason = \"Normal weather\";\nif (rainfall > 10) { factor = 1.25; reason = \"Heavy rain\"; }\nelse if (rainfall > 5) { factor = 1.18; reason = \"Moderate rain\"; }\nelse if (rainfall > 0) { factor = 1.10; reason = \"Light rain\"; }\nif (temperature > 33) { factor *= 1.05; reason += \" + extreme heat\"; }\nelse if (temperature < 15) { factor *= 1.03; reason += \" + cold\"; }\n\nvar processed = {\n    timestamp: timestamp,\n    rainfall_mm: rainfall,\n    temperature_c: Math.round(temperature * 10)/10,\n    humidity_pct: Math.round(humidity),\n    parking_impact_factor: Math.round(factor * 100)/100,\n    impact_reason: reason,\n    weather_condition: rainfall > 5 ? \"Rainy\" : temperature > 32 ? \"Hot\" : temperature < 18 ? \"Cold\" : \"Normal\"\n};\n\ncontext.set('weather', processed);\nmsg.payload = processed;\nmsg.collection = \"weather_history\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 670,
+        "y": 360,
+        "wires": [
+            [
+                "func_save_weather"
+            ]
+        ]
+    },
+    {
+        "id": "inject_prediction",
+        "type": "inject",
+        "z": "parking_tab",
+        "name": "Trigger every 15min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "900",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "10",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 460,
+        "wires": [
+            [
+                "function_prediction_model"
+            ]
+        ]
+    },
+    {
+        "id": "function_prediction_model",
+        "type": "function",
+        "z": "parking_tab",
+        "name": "Parking Availability Prediction Model",
+        "func": "var timestamp = new Date();\nvar hour = timestamp.getHours();\nvar day = timestamp.getDay();\nvar isWeekend = (day === 0 || day === 6);\n\nvar currentParking = context.get('current_parking') || [];\nvar weather = context.get('weather') || {parking_impact_factor: 1.0, impact_reason: \"Normal\"};\nvar traffic = context.get('traffic') || {congestion_level: \"Light\"};\n\nif (!currentParking.length) return null;\n\nvar predictions = currentParking.map(park => {\n    var occ = park.occupancy_rate;\n    var pred = occ;\n\n    // \u65f6\u95f4\u6bb5\u8c03\u6574\n    if ([8,9].includes(hour)) pred = Math.min(100, occ + 12);\n    else if (hour === 10 || hour === 11) pred = Math.min(100, occ + 6);\n    else if ([12,13].includes(hour)) pred = Math.min(100, occ + 10);\n    else if ([17,18].includes(hour)) pred = Math.min(100, occ + 15);\n    else if (hour >= 19 && hour <= 20) pred = Math.min(100, occ + 4);\n    else if (hour >= 21 || hour < 7) pred = Math.max(15, occ - 20);\n\n    if (isWeekend) pred *= 0.7;\n    pred *= weather.parking_impact_factor;\n    if (traffic.congestion_level === \"Severe\") pred *= 1.05;\n\n    pred = Math.max(0, Math.min(100, pred));\n    var avail = 100 - pred;\n    var score = avail > 40 ? 90 : avail > 25 ? 70 : avail > 15 ? 50 : avail > 5 ? 30 : 10;\n    var rec = avail > 40 ? \"Highly Recommended\" : avail > 25 ? \"Recommended\" : avail > 15 ? \"Moderate\" : avail > 5 ? \"Limited\" : \"Not Recommended\";\n\n    return {\n        timestamp: timestamp,\n        park_id: park.park_id,\n        park_name: park.name,\n        district: park.district,\n        current_occupancy: Math.round(occ * 10)/10,\n        predicted_occupancy_30min: Math.round(pred * 10)/10,\n        predicted_availability: Math.round(avail * 10)/10,\n        estimated_spaces_available: Math.round(park.total_spaces * avail / 100),\n        recommendation: rec,\n        recommendation_score: score,\n        weather_impact: weather.impact_reason,\n        traffic_impact: traffic.congestion_level,\n        is_weekend: isWeekend\n    };\n});\n\npredictions.sort((a,b) => b.recommendation_score - a.recommendation_score);\ncontext.set('predictions', predictions);\n\nmsg.payload = predictions;\nmsg.collection = \"parking_predictions\";\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 460,
+        "wires": [
+            [
+                "func_save_predictions",
+                "function_prepare_prediction_display"
+            ]
+        ]
+    },
+    {
+        "id": "function_prepare_parking_dashboard",
+        "type": "function",
+        "z": "parking_tab",
+        "name": "Prepare Parking Dashboard Data",
+        "func": "var data = msg.payload || [];\nif (!data.length) {\n    node.status({fill:\"yellow\",shape:\"ring\",text:\"No data\"});\n    return [null, null, null, null, null];\n}\n\nnode.status({fill:\"green\",shape:\"dot\",text:data.length + \" carparks\"});\n\n// Calculate average occupancy\nvar avg = Math.round(data.reduce((s,p) => s + p.occupancy_rate, 0) / data.length);\n\n// Get top 3 by occupancy rate\nvar sorted = data.slice().sort((a,b) => b.occupancy_rate - a.occupancy_rate);\nvar top3 = sorted.slice(0,3);\n\n// For chart: send average as single data point with timestamp\nvar chartMsg = {\n    payload: avg,\n    timestamp: new Date().getTime()\n};\n\nreturn [\n    {payload: avg},  // Average gauge\n    top3[0] ? {payload: top3[0].occupancy_rate, topic: top3[0].name} : null,  // Top 1 gauge\n    top3[1] ? {payload: top3[1].occupancy_rate, topic: top3[1].name} : null,  // Top 2 gauge  \n    top3[2] ? {payload: top3[2].occupancy_rate, topic: top3[2].name} : null,  // Top 3 gauge\n    chartMsg  // Chart data\n];\n",
+        "outputs": 5,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 980,
+        "y": 180,
+        "wires": [
+            [
+                "ui_gauge_avg"
+            ],
+            [
+                "ui_gauge_parking1"
+            ],
+            [
+                "ui_gauge_parking2"
+            ],
+            [
+                "ui_gauge_parking3"
+            ],
+            [
+                "ui_chart_occupancy"
+            ]
+        ]
+    },
+    {
+        "id": "function_prepare_prediction_display",
+        "type": "function",
+        "z": "parking_tab",
+        "name": "Prepare Prediction Display",
+        "func": "var preds = msg.payload || [];\nif (!preds.length) return [null, null, null];\n\nvar top5 = preds.slice(0,5).map(p => ({\n    topic: p.park_name.substring(0,20),\n    payload: p.predicted_availability\n}));\n\nvar avgAvail = Math.round(preds.reduce((s,p) => s + p.predicted_availability, 0) / preds.length);\nvar highly = preds.filter(p => p.recommendation === \"Highly Recommended\").length;\n\nvar summary = {\n    total_facilities: preds.length,\n    avg_predicted_availability: avgAvail,\n    highly_recommended_count: highly,\n    top_recommendation: preds[0] || {},\n    timestamp: new Date().toLocaleString()\n};\n\nvar alerts = [];\nif (avgAvail < 15) alerts.push({topic: \"Critical Alert\", payload: `Warning: Only ${avgAvail}% average availability!`});\nif (preds[0]?.weather_impact.includes(\"rain\")) alerts.push({topic: \"Weather\", payload: \"Rain increasing parking demand\"});\n\nreturn [top5, {payload: summary}, alerts.length ? alerts : null];",
+        "outputs": 3,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1020,
+        "y": 520,
+        "wires": [
+            [
+                "ui_chart_predictions"
+            ],
+            [
+                "ui_template_summary"
+            ],
+            [
+                "ui_notification"
+            ]
+        ]
+    },
+    {
+        "id": "ui_gauge_avg",
+        "type": "ui_gauge",
+        "z": "parking_tab",
+        "name": "Average Occupancy",
+        "group": "ui_group_realtime",
+        "order": 1,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "Central Area Avg Occupancy",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": 60,
+        "seg2": 85,
+        "x": 1300,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "ui_gauge_parking1",
+        "type": "ui_gauge",
+        "z": "parking_tab",
+        "name": "Top 1",
+        "group": "ui_group_realtime",
+        "order": 2,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{topic}}",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": 60,
+        "seg2": 85,
+        "x": 1300,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "ui_gauge_parking2",
+        "type": "ui_gauge",
+        "z": "parking_tab",
+        "name": "Top 2",
+        "group": "ui_group_realtime",
+        "order": 3,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{topic}}",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": 60,
+        "seg2": 85,
+        "x": 1300,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "ui_gauge_parking3",
+        "type": "ui_gauge",
+        "z": "parking_tab",
+        "name": "Top 3",
+        "group": "ui_group_realtime",
+        "order": 4,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "{{topic}}",
+        "label": "%",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 100,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": 60,
+        "seg2": 85,
+        "x": 1300,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "ui_chart_occupancy",
+        "type": "ui_chart",
+        "z": "parking_tab",
+        "name": "Real-time Occupancy Trend",
+        "group": "ui_group_realtime",
+        "order": 5,
+        "width": "12",
+        "height": "6",
+        "label": "Parking Occupancy Rate (%)",
+        "chartType": "line",
+        "legend": "true",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "Collecting data...",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "100",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#ff7f0e",
+            "#2ca02c",
+            "#d62728",
+            "#9467bd"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1300,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_chart_predictions",
+        "type": "ui_chart",
+        "z": "parking_tab",
+        "name": "Predicted Availability (30min)",
+        "group": "ui_group_predictions",
+        "order": 1,
+        "width": "12",
+        "height": "6",
+        "label": "Top 5 Recommended - Predicted Availability (%)",
+        "chartType": "bar",
+        "legend": "false",
+        "xformat": "",
+        "interpolate": "linear",
+        "nodata": "Waiting for prediction...",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "100",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#00b500",
+            "#33b533",
+            "#66b566",
+            "#99d699",
+            "#cceecc"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1320,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_template_summary",
+        "type": "ui_template",
+        "z": "parking_tab",
+        "group": "ui_group_kpi",
+        "name": "KPI Dashboard",
+        "order": 1,
+        "width": 12,
+        "height": 8,
+        "format": "<div class=\"kpi-container\">...</div><style>...</style>",
+        "storeOutMessages": false,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "x": 1320,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ui_notification",
+        "type": "ui_toast",
+        "z": "parking_tab",
+        "position": "top right",
+        "displayTime": "6",
+        "highlight": "",
+        "sendall": true,
+        "outputs": 0,
+        "topic": "",
+        "name": "Parking Alert",
+        "x": 1320,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "ui_template_correlation",
+        "type": "ui_template",
+        "z": "parking_tab",
+        "group": "ui_group_correlation",
+        "name": "Correlation Analysis",
+        "order": 1,
+        "width": 12,
+        "height": 8,
+        "format": "<div class=\"correlation-container\">...</div><style>...</style>",
+        "storeOutMessages": false,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "x": 1320,
+        "y": 940,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "type": "function",
+        "name": "Save Parking Data",
+        "func": "// MongoClient is available from libs declaration\nconst url = 'mongodb://admin:1234@mymongo:27017/smartcity?authSource=admin';\n\nif (!msg.payload || (Array.isArray(msg.payload) && msg.payload.length === 0)) {\n    node.status({fill:\"yellow\",shape:\"ring\",text:\"No data\"});\n    return null;\n}\n\nconst client = new MongoClient.MongoClient(url);\n\nclient.connect()\n    .then(() => {\n        const db = client.db('smartcity');\n        const collection = db.collection('parking_realtime');\n        if (Array.isArray(msg.payload)) {\n            return collection.insertMany(msg.payload);\n        } else {\n            return collection.insertOne(msg.payload);\n        }\n    })\n    .then((result) => {\n        node.status({fill:\"green\",shape:\"dot\",text:\"Saved \" + (result.insertedCount || 1)});\n        client.close();\n    })\n    .catch(err => {\n        node.error(err);\n        node.status({fill:\"red\",shape:\"dot\",text:\"Error: \" + err.message});\n        if (client) client.close();\n    });\n\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "id": "func_save_parking",
+        "collection": "parking_realtime",
+        "z": "parking_tab",
+        "x": 980,
+        "y": 120,
+        "wires": [
+            []
+        ],
+        "libs": [
+            {
+                "var": "MongoClient",
+                "module": "mongodb"
+            }
+        ]
+    },
+    {
+        "type": "function",
+        "name": "Save Traffic Data",
+        "func": "// MongoClient is available from libs declaration\nconst url = 'mongodb://admin:1234@mymongo:27017/smartcity?authSource=admin';\n\nif (!msg.payload || (Array.isArray(msg.payload) && msg.payload.length === 0)) {\n    node.status({fill:\"yellow\",shape:\"ring\",text:\"No data\"});\n    return null;\n}\n\nconst client = new MongoClient.MongoClient(url);\n\nclient.connect()\n    .then(() => {\n        const db = client.db('smartcity');\n        const collection = db.collection('traffic_status');\n        if (Array.isArray(msg.payload)) {\n            return collection.insertMany(msg.payload);\n        } else {\n            return collection.insertOne(msg.payload);\n        }\n    })\n    .then((result) => {\n        node.status({fill:\"green\",shape:\"dot\",text:\"Saved \" + (result.insertedCount || 1)});\n        client.close();\n    })\n    .catch(err => {\n        node.error(err);\n        node.status({fill:\"red\",shape:\"dot\",text:\"Error: \" + err.message});\n        if (client) client.close();\n    });\n\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "id": "func_save_traffic",
+        "collection": "traffic_status",
+        "z": "parking_tab",
+        "x": 760,
+        "y": 260,
+        "wires": [
+            []
+        ],
+        "libs": [
+            {
+                "var": "MongoClient",
+                "module": "mongodb"
+            }
+        ]
+    },
+    {
+        "type": "function",
+        "name": "Save Weather Data",
+        "func": "// MongoClient is available from libs declaration\nconst url = 'mongodb://admin:1234@mymongo:27017/smartcity?authSource=admin';\n\nif (!msg.payload || (Array.isArray(msg.payload) && msg.payload.length === 0)) {\n    node.status({fill:\"yellow\",shape:\"ring\",text:\"No data\"});\n    return null;\n}\n\nconst client = new MongoClient.MongoClient(url);\n\nclient.connect()\n    .then(() => {\n        const db = client.db('smartcity');\n        const collection = db.collection('weather_history');\n        if (Array.isArray(msg.payload)) {\n            return collection.insertMany(msg.payload);\n        } else {\n            return collection.insertOne(msg.payload);\n        }\n    })\n    .then((result) => {\n        node.status({fill:\"green\",shape:\"dot\",text:\"Saved \" + (result.insertedCount || 1)});\n        client.close();\n    })\n    .catch(err => {\n        node.error(err);\n        node.status({fill:\"red\",shape:\"dot\",text:\"Error: \" + err.message});\n        if (client) client.close();\n    });\n\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "id": "func_save_weather",
+        "collection": "weather_history",
+        "z": "parking_tab",
+        "x": 780,
+        "y": 360,
+        "wires": [
+            []
+        ],
+        "libs": [
+            {
+                "var": "MongoClient",
+                "module": "mongodb"
+            }
+        ]
+    },
+    {
+        "type": "function",
+        "name": "Save Predictions",
+        "func": "\nconst { MongoClient } = global.get('mongoClient') || {};\nif (!MongoClient) {\n    const MC = require('mongodb').MongoClient;\n    global.set('mongoClient', { MongoClient: MC });\n}\n\nconst url = 'mongodb://admin:1234@mymongo:27017/smartcity?authSource=admin';\nconst collection_name = 'parking_predictions';\n\nif (!msg.payload || !Array.isArray(msg.payload)) {\n    return null;\n}\n\nconst client = new (require('mongodb').MongoClient)(url);\n\nclient.connect().then(() => {\n    const db = client.db('smartcity');\n    const collection = db.collection(collection_name);\n    return collection.insertMany(msg.payload);\n}).then(() => {\n    client.close();\n    node.status({fill:\"green\",shape:\"dot\",text:\"Saved\"});\n}).catch(err => {\n    node.error(err);\n    node.status({fill:\"red\",shape:\"dot\",text:\"Error\"});\n    client.close();\n});\n\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "id": "func_save_predictions",
+        "collection": "parking_predictions",
+        "z": "parking_tab",
+        "x": 1300,
+        "y": 500,
+        "wires": [
+            []
+        ]
+    }
+]
